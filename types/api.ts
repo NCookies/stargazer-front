@@ -7,7 +7,7 @@ export interface WeatherInfo {
 }
 
 export interface AstronomyInfo {
-  moonPhase: string // "초승달"
+  moonPhase: string // "FULL_MOON", "NEW_MOON" 등
   moonRiseTime: string // "23:45"
   sunsetTime: string // "19:32"
 }
@@ -24,5 +24,23 @@ export interface StargazingResponse {
   weather: WeatherInfo | null // 기상 정보
   astronomy: AstronomyInfo | null // 천문 정보
   lightPollution: LightPollutionInfo | null // 광해 정보
+}
+
+// 주간 예보 관련 타입
+export interface HourlyForecast {
+  time: string // "21:00"
+  score: number // 0~100
+  starGrade: string // "4.5등급"
+  cloudCover: number // 0~100
+  moonPhase: string // "FULL_MOON", "NEW_MOON" 등
+}
+
+export interface DailyForecast {
+  date: string // "2025-05-20 (금)"
+  hourlyForecasts: HourlyForecast[]
+}
+
+export interface StargazingForecastResponse {
+  dailyForecasts: DailyForecast[]
 }
 

@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Cloud, Moon, Sparkles } from "lucide-react"
 import { CircularGauge } from "@/components/circular-gauge"
 import type { StargazingResponse } from "@/types/api"
+import { MOON_PHASE_MAP } from "@/lib/utils"
 
 interface ResultSectionProps {
   data: StargazingResponse
@@ -86,7 +87,16 @@ export function ResultSection({ data }: ResultSectionProps) {
               <>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">월령</span>
-                  <span className="text-lg font-semibold text-foreground">{astronomy.moonPhase}</span>
+                  <span className="text-lg font-semibold text-foreground flex items-center gap-2">
+                    {MOON_PHASE_MAP[astronomy.moonPhase] ? (
+                      <>
+                        <span className="text-xl">{MOON_PHASE_MAP[astronomy.moonPhase].icon}</span>
+                        <span>{MOON_PHASE_MAP[astronomy.moonPhase].label}</span>
+                      </>
+                    ) : (
+                      <span>{astronomy.moonPhase}</span>
+                    )}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">달 뜨는 시간</span>
