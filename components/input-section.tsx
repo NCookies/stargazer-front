@@ -3,24 +3,28 @@
 import type React from "react"
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Search, MapPin, Locate, Calendar, Clock } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Spinner } from "@/components/ui/spinner"
+
 interface InputSectionProps {
-  onCalculate: () => void
+  onCalculate: () => Promise<void> | void
+  isLoading?: boolean
+  error?: string | null
 }
 
-export function InputSection({ onCalculate }: InputSectionProps) {
+export function InputSection({ onCalculate, isLoading, error }: InputSectionProps) {
   const [location, setLocation] = useState("")
   const [date, setDate] = useState("")
   const [time, setTime] = useState("")
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    onCalculate()
+    await onCalculate()
   }
 
   return (
@@ -126,13 +130,18 @@ export function InputSection({ onCalculate }: InputSectionProps) {
             </div>
           </div>
 
-          <Button
-            type="submit"
-            size="lg"
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-lg shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:shadow-[0_0_30px_rgba(168,85,247,0.5)] transition-all"
-          >
-            관측 적합도 계산하기
-          </Button>
+          <div className="space-y-2">
+            <Button
+              type="submit"
+              size="lg"
+              disabled={isLoading}
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-lg shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:shadow-[0_0_30px_rgba(168,85,247,0.5)] transition-all disabled:opacity-70"
+            >
+              {isLoading && <Spinner className="mr-2" />}
+              {isLoading ? "계산 중..." : "관측 적합도 계산하기"}
+            </Button>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+          </div>
         </form>
       </CardContent>
     </Card>
