@@ -6,6 +6,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  allowedDevOrigins: ['39.119.82.172'],
   async rewrites() {
     return [
       {

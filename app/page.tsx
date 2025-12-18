@@ -5,10 +5,11 @@ import { Header } from "@/components/header"
 import { InputSection } from "@/components/input-section"
 import { ResultSection } from "@/components/result-section"
 import { StarField } from "@/components/star-field"
+import type { StargazingResponse } from "@/types/api"
 
 export default function Home() {
   const [hasResult, setHasResult] = useState(false)
-  const [suitabilityScore, setSuitabilityScore] = useState(0)
+  const [responseData, setResponseData] = useState<StargazingResponse | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -37,14 +38,15 @@ export default function Home() {
         throw new Error(`서버 오류: ${res.status} ${res.statusText}`)
       }
 
-      // 서버에서 점수를 내려주는 형태를 가정
-      const data = await res.json().catch(() => null)
-      const score =
-        typeof data?.score === "number"
-          ? data.score
-          : Math.floor(Math.random() * 40) + 60 // fallback 더미 점수
+      // 스프링 응답 데이터 파싱
+      const data: StargazingResponse = await res.json()
 
-      setSuitabilityScore(score)
+      // 응답 데이터 검증
+      if (!data || typeof data.totalScore !== "number") {
+        throw new Error("서버 응답 형식이 올바르지 않습니다.")
+      }
+
+      setResponseData(data)
       setHasResult(true)
     } catch (err) {
       console.error("API 요청 실패:", err)
@@ -82,7 +84,7 @@ export default function Home() {
               setLon={setLon}
               setLocationName={setLocationName}
             />
-            {hasResult && <ResultSection score={suitabilityScore} />}
+            {hasResult && responseData && <ResultSection data={responseData} />}
           </div>
         </main>
       </div>
