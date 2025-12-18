@@ -3,21 +3,36 @@
 import type React from "react"
 
 import { useState } from "react"
-import { Search, MapPin, Locate, Calendar, Clock } from "lucide-react"
+import { Search, MapPin, Calendar, Clock } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Spinner } from "@/components/ui/spinner"
+import dynamic from "next/dynamic"
+
+const MapSelector = dynamic(() => import("@/components/MapSelector"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-64 rounded-lg overflow-hidden border border-gray-700 relative z-0 bg-secondary/30 flex items-center justify-center">
+      <p className="text-muted-foreground">지도를 불러오는 중...</p>
+    </div>
+  ),
+})
 
 interface InputSectionProps {
   onCalculate: () => Promise<void> | void
   isLoading?: boolean
   error?: string | null
+  lat: number
+  lon: number
+  setLat: (lat: number) => void
+  setLon: (lon: number) => void
+  setLocationName: (name: string) => void
 }
 
-export function InputSection({ onCalculate, isLoading, error }: InputSectionProps) {
+export function InputSection({ onCalculate, isLoading, error, lat, lon, setLat, setLon, setLocationName }: InputSectionProps) {
   const [location, setLocation] = useState("")
   const [date, setDate] = useState("")
   const [time, setTime] = useState("")
@@ -86,48 +101,8 @@ export function InputSection({ onCalculate, isLoading, error }: InputSectionProp
               />
             </div>
 
-            {/* Map Area Placeholder */}
-            <div className="relative bg-secondary/30 border-2 border-dashed border-border/50 rounded-lg h-64 overflow-hidden">
-              {/* Map placeholder with grid */}
-              <div className="absolute inset-0 bg-gradient-to-br from-secondary/40 to-background/40" />
-              <div
-                className="absolute inset-0 opacity-10"
-                style={{
-                  backgroundImage: `
-                    linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px),
-                    linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px)
-                  `,
-                  backgroundSize: "40px 40px",
-                }}
-              />
-
-              {/* Center Pin */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-                <div className="relative">
-                  <MapPin
-                    className="w-10 h-10 text-primary drop-shadow-[0_0_10px_rgba(168,85,247,0.5)]"
-                    fill="currentColor"
-                  />
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-16 bg-primary/20 rounded-full animate-ping" />
-                </div>
-              </div>
-
-              {/* Map Label */}
-              <div className="absolute top-4 left-4 bg-background/80 backdrop-blur-sm px-3 py-2 rounded-lg border border-border/50">
-                <p className="text-sm text-muted-foreground">지도 영역</p>
-              </div>
-
-              {/* GPS Button */}
-              <Button
-                type="button"
-                size="icon"
-                variant="secondary"
-                className="absolute bottom-4 right-4 shadow-lg hover:scale-105 transition-transform bg-secondary/90 backdrop-blur-sm"
-              >
-                <Locate className="w-5 h-5 text-accent" />
-                <span className="sr-only">내 위치 가져오기</span>
-              </Button>
-            </div>
+            {/* Map Selector */}
+            <MapSelector lat={lat} lon={lon} setLat={setLat} setLon={setLon} setLocationName={setLocationName} />
           </div>
 
           <div className="space-y-2">
