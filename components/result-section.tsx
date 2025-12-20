@@ -22,9 +22,9 @@ export function ResultSection({ data }: ResultSectionProps) {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 relative">
       {/* Gauge Section */}
-      <Card className="border-primary/30 bg-gradient-to-br from-card/80 to-primary/5 backdrop-blur-sm shadow-[0_0_30px_rgba(168,85,247,0.2)]">
+      <Card className="border-primary/30 bg-gradient-to-br from-card/80 to-primary/5 backdrop-blur-sm shadow-[0_0_30px_rgba(168,85,247,0.2)] animate-in zoom-in-95 duration-500">
         <CardContent className="pt-8 pb-6">
           <div className="flex flex-col items-center gap-6">
             <CircularGauge score={totalScore} />

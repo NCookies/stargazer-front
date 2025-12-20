@@ -19,6 +19,8 @@ export interface LightPollutionInfo {
 }
 
 export interface StargazingResponse {
+  date: string // "2025-12-19"
+  time: string // "22:00"
   totalScore: number // 종합 점수
   aiComment: string | null // AI 한줄 평
   weather: WeatherInfo | null // 기상 정보

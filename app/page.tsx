@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { MapPin } from "lucide-react"
 import dynamic from "next/dynamic"
 import type { StargazingResponse, StargazingForecastResponse } from "@/types/api"
+import { useToast } from "@/hooks/use-toast"
 
 const MapSelector = dynamic(() => import("@/components/MapSelector"), {
   ssr: false,
@@ -23,12 +24,14 @@ const MapSelector = dynamic(() => import("@/components/MapSelector"), {
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("forecast")
+  const { toast } = useToast()
   
   // 현재 관측 관련 상태
   const [hasResult, setHasResult] = useState(false)
   const [responseData, setResponseData] = useState<StargazingResponse | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [resultKey, setResultKey] = useState(0) // 결과 섹션 재렌더링용 키
 
   // 예보 관련 상태
   const [forecastData, setForecastData] = useState<StargazingForecastResponse | null>(null)
@@ -38,24 +41,75 @@ export default function Home() {
   const [lat, setLat] = useState(37.5665); // 서울 기본값
   const [lon, setLon] = useState(126.9780);
 
+  // 선택된 시간 상태 (탭 전환 시에도 유지)
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  
+  // 마지막 분석에 사용한 좌표 저장
+  const [lastAnalyzedLat, setLastAnalyzedLat] = useState<number | null>(null);
+  const [lastAnalyzedLon, setLastAnalyzedLon] = useState<number | null>(null);
+
   // 현재 관측 분석 API 호출
-  const handleCalculate = async () => {
+  const handleCalculate = async (selectedTimeOrKey: string) => {
     setIsLoading(true)
     setError(null)
 
     try {
-      // 현재 날짜와 시간 가져오기 (한국 시간 기준, KST)
-      const now = new Date()
+      const now = new Date() // 모든 분기에서 사용 가능하도록 함수 시작 부분에서 정의
+      let currentDate: string
+      let currentTime: string
       
-      // 한국 시간(로컬 시간)으로 포맷팅
-      const localYear = now.getFullYear()
-      const localMonth = String(now.getMonth() + 1).padStart(2, '0')
-      const localDay = String(now.getDate()).padStart(2, '0')
-      const localHours = String(now.getHours()).padStart(2, '0')
-      const localMinutes = String(now.getMinutes()).padStart(2, '0')
-      
-      const currentDate = `${localYear}-${localMonth}-${localDay}`
-      const currentTime = `${localHours}:${localMinutes}`
+      // "date|time" 형식인지 확인 (새로운 키 형식)
+      if (selectedTimeOrKey.includes('|')) {
+        const [date, time] = selectedTimeOrKey.split('|')
+        currentDate = date
+        currentTime = time
+      } else {
+        // 기존 "HH:mm" 형식 또는 "MM-DD-HH-mm" 형식 (하위 호환성)
+        const localYear = now.getFullYear()
+        const localMonth = String(now.getMonth() + 1).padStart(2, '0')
+        const localDay = String(now.getDate()).padStart(2, '0')
+        
+        // "MM-DD-HH-mm" 형식인 경우
+        if (selectedTimeOrKey.includes('-') && selectedTimeOrKey.length > 5) {
+          const parts = selectedTimeOrKey.split('-')
+          if (parts.length >= 4) {
+            currentDate = `${localYear}-${parts[0]}-${parts[1]}`
+            currentTime = `${parts[2]}:${parts[3]}`
+          } else {
+            // 기존 로직
+            const selectedHour = parseInt(selectedTimeOrKey.split(':')[0])
+            const currentHour = now.getHours()
+            
+            let targetDate = `${localYear}-${localMonth}-${localDay}`
+            if (selectedHour <= 8 && currentHour >= 17) {
+              const nextDay = new Date(now)
+              nextDay.setDate(nextDay.getDate() + 1)
+              const nextYear = nextDay.getFullYear()
+              const nextMonth = String(nextDay.getMonth() + 1).padStart(2, '0')
+              const nextDayStr = String(nextDay.getDate()).padStart(2, '0')
+              targetDate = `${nextYear}-${nextMonth}-${nextDayStr}`
+            }
+            currentDate = targetDate
+            currentTime = selectedTimeOrKey
+          }
+        } else {
+          // 기존 "HH:mm" 형식
+          const selectedHour = parseInt(selectedTimeOrKey.split(':')[0])
+          const currentHour = now.getHours()
+          
+          let targetDate = `${localYear}-${localMonth}-${localDay}`
+          if (selectedHour <= 8 && currentHour >= 17) {
+            const nextDay = new Date(now)
+            nextDay.setDate(nextDay.getDate() + 1)
+            const nextYear = nextDay.getFullYear()
+            const nextMonth = String(nextDay.getMonth() + 1).padStart(2, '0')
+            const nextDayStr = String(nextDay.getDate()).padStart(2, '0')
+            targetDate = `${nextYear}-${nextMonth}-${nextDayStr}`
+          }
+          currentDate = targetDate
+          currentTime = selectedTimeOrKey
+        }
+      }
 
       // 디버깅: 전송되는 데이터 확인
       console.log("📅 전송되는 날짜/시간 (한국 시간 기준):", { date: currentDate, time: currentTime, localTime: now.toString() })
@@ -89,6 +143,17 @@ export default function Home() {
 
       setResponseData(data)
       setHasResult(true)
+      setResultKey(prev => prev + 1) // 결과 섹션 재렌더링 트리거
+      
+      // 마지막 분석에 사용한 좌표 저장
+      setLastAnalyzedLat(lat)
+      setLastAnalyzedLon(lon)
+      
+      // 성공 토스트 메시지 표시
+      toast({
+        title: "분석 완료",
+        description: `${data.date} ${data.time} 시간대의 관측 적합도 분석이 완료되었습니다.`,
+      })
     } catch (err) {
       console.error("API 요청 실패:", err)
       setHasResult(false)
@@ -209,7 +274,7 @@ export default function Home() {
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full max-w-md grid-cols-2">
                 <TabsTrigger value="forecast">주간 예보</TabsTrigger>
-                <TabsTrigger value="current">지금 관측</TabsTrigger>
+                <TabsTrigger value="current">오늘 분석</TabsTrigger>
               </TabsList>
               
               <TabsContent value="forecast" className="mt-6 space-y-4">
@@ -225,12 +290,19 @@ export default function Home() {
               
               <TabsContent value="current" className="mt-6 space-y-8">
                 <InputSection 
-                  onCalculate={handleCalculate} 
+                  selectedTime={selectedTime ?? ""}
+                  onTimeChange={(time) => setSelectedTime(time)}
+                  onCalculate={(time) => handleCalculate(time)} 
+                  responseData={responseData}
+                  currentLat={lat}
+                  currentLon={lon}
+                  lastAnalyzedLat={lastAnalyzedLat}
+                  lastAnalyzedLon={lastAnalyzedLon}
                   isLoading={isLoading} 
                   error={error}
                 />
                 {hasResult && responseData ? (
-                  <ResultSection data={responseData} />
+                  <ResultSection key={resultKey} data={responseData} />
                 ) : (
                   <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
                     <CardContent className="pt-6">
