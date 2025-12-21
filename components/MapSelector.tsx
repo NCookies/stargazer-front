@@ -11,23 +11,34 @@ import { Button } from '@/components/ui/button';
 import { Search, Loader2 } from 'lucide-react';
 
 // 📌 Leaflet 마커 아이콘 깨짐 방지 코드 (필수!) - 클라이언트 사이드에서만 실행
-let iconInitialized = false;
-const initializeLeafletIcon = () => {
-    if (typeof window === 'undefined' || iconInitialized) return;
-    
-    try {
-        // 기본 Leaflet 아이콘 경로 사용
-        delete (L.Icon.Default.prototype as any)._getIconUrl;
-        L.Icon.Default.mergeOptions({
+let defaultIcon: L.Icon | null = null;
+
+const getDefaultIcon = (): L.Icon => {
+    if (typeof window === 'undefined') {
+        // SSR 환경에서는 더미 아이콘 반환
+        return new L.Icon({
             iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
             iconShadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
             iconSize: [25, 41],
-            iconAnchor: [12, 41]
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
         });
-        iconInitialized = true;
-    } catch (error) {
-        console.warn('Leaflet 아이콘 초기화 실패:', error);
     }
+    
+    if (!defaultIcon) {
+        // CDN에서 직접 로드하는 아이콘 생성
+        defaultIcon = new L.Icon({
+            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+            iconShadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+    }
+    
+    return defaultIcon;
 };
 
 interface Position {
@@ -59,7 +70,7 @@ function LocationMarker({ position, setPosition, setLocationName }: LocationMark
         return null;
     }
 
-    return <Marker position={[position.lat, position.lon] as LatLngExpression} />;
+    return <Marker position={[position.lat, position.lon] as LatLngExpression} icon={getDefaultIcon()} />;
 }
 
 interface SearchResult {
@@ -104,7 +115,8 @@ export default function MapSelector({ lat, lon, setLat, setLon, setLocationName 
     // 클라이언트 사이드에서만 렌더링되도록 처리 (SSR 에러 방지)
     useEffect(() => {
         if (typeof window !== 'undefined') {
-            initializeLeafletIcon();
+            // 아이콘 초기화 (한 번만 실행)
+            getDefaultIcon();
             setIsMounted(true);
         }
     }, []);
