@@ -25,3 +25,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# commit messages
+COMMIT_MESSAGE.txt
+PR_MESSAGE.md
