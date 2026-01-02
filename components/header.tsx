@@ -12,9 +12,9 @@ export function Header() {
             </div>
             <div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-primary via-purple-400 to-accent bg-clip-text text-transparent">
-                StarGazer AI
+                별볼일
               </h1>
-              <p className="text-xs text-muted-foreground">천체 관측 적합도 분석</p>
+              <p className="text-xs text-muted-foreground">오늘 밤 별볼일 있나요?</p>
             </div>
           </div>
           <nav className="flex items-center gap-6">
