@@ -136,7 +136,7 @@ export default function MapSelector({ lat, lon, setLat, setLon, setLocationName 
                 `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&accept-language=ko`,
                 {
                     headers: {
-                        'User-Agent': 'Stargazer App' // Nominatim은 User-Agent 필수
+                        'User-Agent': '별볼일' // Nominatim은 User-Agent 필수
                     }
                 }
             );

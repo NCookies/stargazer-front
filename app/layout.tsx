@@ -9,7 +9,7 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "StarGazer AI - 천체 관측 적합도",
+  title: "별볼일",
   description: "날씨, 천문, 광해 데이터로 최적의 별 관측 시간을 찾아드립니다",
   generator: "v0.app",
   icons: {
