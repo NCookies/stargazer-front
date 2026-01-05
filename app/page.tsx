@@ -159,7 +159,7 @@ export default function Home() {
       // 성공 토스트 메시지 표시
       toast({
         title: "분석 완료",
-        description: `${data.date} ${data.time} 시간대의 관측 적합도 분석이 완료되었습니다.`,
+        description: `${response.data.date} ${response.data.time} 시간대의 관측 적합도 분석이 완료되었습니다.`,
       })
     } catch (err) {
       console.error("API 요청 실패:", err)
