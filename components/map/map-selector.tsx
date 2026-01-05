@@ -247,7 +247,7 @@ export default function MapSelector({
   if (!isReady || !mapProvider) {
     console.log('[MapSelector] Provider 대기 중:', { isReady, hasMapProvider: !!mapProvider })
     return (
-      <div className="w-full h-64 rounded-lg overflow-hidden border border-gray-700 relative z-0 bg-secondary/30 flex items-center justify-center">
+      <div className="w-full h-96 rounded-lg overflow-hidden border border-gray-700 relative z-0 bg-secondary/30 flex items-center justify-center">
         <p className="text-muted-foreground">지도 제공자를 초기화하는 중...</p>
       </div>
     )
@@ -313,7 +313,7 @@ export default function MapSelector({
       </form>
 
       {/* 지도 */}
-      <div className="w-full h-64 rounded-lg overflow-hidden border border-gray-700 relative z-0">
+      <div className="w-full h-96 rounded-lg overflow-hidden border border-gray-700 relative z-0">
         {/* 컨테이너는 항상 렌더링 (초기화를 위해 필요) */}
         <div
           ref={containerRef}

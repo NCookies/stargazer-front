@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast"
 const MapSelector = dynamic(() => import("@/components/map/map-selector"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-64 rounded-lg overflow-hidden border border-gray-700 relative z-0 bg-secondary/30 flex items-center justify-center">
+    <div className="w-full h-96 rounded-lg overflow-hidden border border-gray-700 relative z-0 bg-secondary/30 flex items-center justify-center">
       <p className="text-muted-foreground">지도를 불러오는 중...</p>
     </div>
   ),
@@ -114,19 +114,19 @@ export default function Home() {
       // 디버깅: 전송되는 데이터 확인
       console.log("📅 전송되는 날짜/시간 (한국 시간 기준):", { date: currentDate, time: currentTime, localTime: now.toString() })
 
-      const requestBody = {
-        lat: lat,
-        lon: lon,
+      // 쿼리 스트링 생성
+      const queryParams = new URLSearchParams({
+        lat: lat.toString(),
+        lon: lon.toString(),
         date: currentDate,
         time: currentTime,
-      }
+      })
 
-      console.log("📤 API 요청 데이터:", requestBody)
+      const requestUrl = `/api/v1/analyze?${queryParams.toString()}`
+      console.log("📤 API 요청 URL:", requestUrl)
 
-      const res = await fetch("/api/v1/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
+      const res = await fetch(requestUrl, {
+        method: "GET",
       })
 
       if (!res.ok) {
@@ -186,17 +186,17 @@ export default function Home() {
     setForecastError(null)
 
     try {
-      const requestBody = {
-        lat: lat,
-        lon: lon,
-      }
+      // 쿼리 스트링 생성
+      const queryParams = new URLSearchParams({
+        lat: lat.toString(),
+        lon: lon.toString(),
+      })
 
-      console.log("📤 예보 API 요청 데이터:", requestBody)
+      const requestUrl = `/api/v1/forecast?${queryParams.toString()}`
+      console.log("📤 예보 API 요청 URL:", requestUrl)
 
-      const res = await fetch("/api/v1/forecast", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
+      const res = await fetch(requestUrl, {
+        method: "GET",
       })
 
       if (!res.ok) {
