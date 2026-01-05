@@ -1,17 +1,19 @@
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Cloud, Moon, Sparkles } from "lucide-react"
+import { Cloud, Moon, Sparkles, HelpCircle, Sun, Sunset } from "lucide-react"
 import { CircularGauge } from "@/components/circular-gauge"
 import type { StargazingResponse } from "@/types/api"
 import { MOON_PHASE_MAP } from "@/lib/utils"
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+import { Button } from "@/components/ui/button"
 
 interface ResultSectionProps {
   data: StargazingResponse
 }
 
 export function ResultSection({ data }: ResultSectionProps) {
-  const { totalScore, aiComment, weather, astronomy, lightPollution } = data
+  const { totalScore, aiComment, reasons, weather, astronomy, lightPollution } = data
 
   const getMessage = (score: number) => {
     if (score >= 90) return "오늘은 별 보기 완벽한 날입니다! 🌟"
@@ -27,7 +29,35 @@ export function ResultSection({ data }: ResultSectionProps) {
       <Card className="border-primary/30 bg-gradient-to-br from-card/80 to-primary/5 backdrop-blur-sm shadow-[0_0_30px_rgba(168,85,247,0.2)] animate-in zoom-in-95 duration-500">
         <CardContent className="pt-8 pb-6">
           <div className="flex flex-col items-center gap-6">
-            <CircularGauge score={totalScore} />
+            <div className="relative">
+              <CircularGauge score={totalScore} />
+              {reasons && reasons.length > 0 && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-0 right-0 h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+                    >
+                      <HelpCircle className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80" align="end">
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-sm">분석 이유</h4>
+                      <ul className="space-y-1.5">
+                        {reasons.map((reason, idx) => (
+                          <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
+                            <span className="text-primary mt-1">•</span>
+                            <span>{reason}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
+            </div>
             <div className="text-center space-y-2">
               <p className="text-2xl font-bold text-balance">{getMessage(totalScore)}</p>
               {aiComment ? (
@@ -98,13 +128,31 @@ export function ResultSection({ data }: ResultSectionProps) {
                     )}
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">달 뜨는 시간</span>
-                  <span className="text-lg font-semibold text-foreground">{astronomy.moonRiseTime}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">일몰</span>
-                  <span className="text-lg font-semibold text-orange-400">{astronomy.sunsetTime}</span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-4 text-sm">
+                    <div className="flex items-center gap-1.5">
+                      <Sun className="w-4 h-4 text-orange-400" />
+                      <span className="text-muted-foreground">일출</span>
+                      <span className="font-semibold text-orange-400">{astronomy.sunrise}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Sunset className="w-4 h-4 text-orange-500" />
+                      <span className="text-muted-foreground">일몰</span>
+                      <span className="font-semibold text-orange-500">{astronomy.sunset}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 text-sm">
+                    <div className="flex items-center gap-1.5">
+                      <Moon className="w-4 h-4 text-accent" />
+                      <span className="text-muted-foreground">월출</span>
+                      <span className="font-semibold text-foreground">{astronomy.moonrise}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Moon className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">월몰</span>
+                      <span className="font-semibold text-foreground">{astronomy.moonset}</span>
+                    </div>
+                  </div>
                 </div>
               </>
             ) : (

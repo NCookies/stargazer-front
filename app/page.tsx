@@ -10,13 +10,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { MapPin } from "lucide-react"
 import dynamic from "next/dynamic"
-import type { StargazingResponse, StargazingForecastResponse } from "@/types/api"
+import type { StargazingResponse, StargazingForecastResponse, CommonResponse } from "@/types/api"
 import { useToast } from "@/hooks/use-toast"
 
 const MapSelector = dynamic(() => import("@/components/map/map-selector"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-64 rounded-lg overflow-hidden border border-gray-700 relative z-0 bg-secondary/30 flex items-center justify-center">
+    <div className="w-full h-96 rounded-lg overflow-hidden border border-gray-700 relative z-0 bg-secondary/30 flex items-center justify-center">
       <p className="text-muted-foreground">지도를 불러오는 중...</p>
     </div>
   ),
@@ -114,34 +114,41 @@ export default function Home() {
       // 디버깅: 전송되는 데이터 확인
       console.log("📅 전송되는 날짜/시간 (한국 시간 기준):", { date: currentDate, time: currentTime, localTime: now.toString() })
 
-      const requestBody = {
-        lat: lat,
-        lon: lon,
+      // 쿼리 스트링 생성
+      const queryParams = new URLSearchParams({
+        lat: lat.toString(),
+        lon: lon.toString(),
         date: currentDate,
         time: currentTime,
-      }
+      })
 
-      console.log("📤 API 요청 데이터:", requestBody)
+      const requestUrl = `/api/v1/analyze?${queryParams.toString()}`
+      console.log("📤 API 요청 URL:", requestUrl)
 
-      const res = await fetch("/api/v1/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
+      const res = await fetch(requestUrl, {
+        method: "GET",
       })
 
       if (!res.ok) {
         throw new Error(`서버 오류: ${res.status} ${res.statusText}`)
       }
 
-      // 스프링 응답 데이터 파싱
-      const data: StargazingResponse = await res.json()
+      // 스프링 응답 데이터 파싱 (CommonResponse 래퍼)
+      const response: CommonResponse<StargazingResponse> = await res.json()
 
-      // 응답 데이터 검증
-      if (!data || typeof data.totalScore !== "number") {
+      // 디버깅: 응답 데이터 콘솔 출력
+      console.log("📥 API 응답 데이터:", response)
+
+      // 응답 검증
+      if (!response.success) {
+        throw new Error(response.message || "서버에서 오류가 발생했습니다.")
+      }
+
+      if (!response.data || typeof response.data.totalScore !== "number") {
         throw new Error("서버 응답 형식이 올바르지 않습니다.")
       }
 
-      setResponseData(data)
+      setResponseData(response.data)
       setHasResult(true)
       setResultKey(prev => prev + 1) // 결과 섹션 재렌더링 트리거
       
@@ -152,7 +159,7 @@ export default function Home() {
       // 성공 토스트 메시지 표시
       toast({
         title: "분석 완료",
-        description: `${data.date} ${data.time} 시간대의 관측 적합도 분석이 완료되었습니다.`,
+        description: `${response.data.date} ${response.data.time} 시간대의 관측 적합도 분석이 완료되었습니다.`,
       })
     } catch (err) {
       console.error("API 요청 실패:", err)
@@ -179,17 +186,17 @@ export default function Home() {
     setForecastError(null)
 
     try {
-      const requestBody = {
-        lat: lat,
-        lon: lon,
-      }
+      // 쿼리 스트링 생성
+      const queryParams = new URLSearchParams({
+        lat: lat.toString(),
+        lon: lon.toString(),
+      })
 
-      console.log("📤 예보 API 요청 데이터:", requestBody)
+      const requestUrl = `/api/v1/forecast?${queryParams.toString()}`
+      console.log("📤 예보 API 요청 URL:", requestUrl)
 
-      const res = await fetch("/api/v1/forecast", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
+      const res = await fetch(requestUrl, {
+        method: "GET",
       })
 
       if (!res.ok) {
@@ -218,13 +225,22 @@ export default function Home() {
         throw new Error(errorMessage)
       }
 
-      const data: StargazingForecastResponse = await res.json()
+      // 스프링 응답 데이터 파싱 (CommonResponse 래퍼)
+      const response: CommonResponse<StargazingForecastResponse> = await res.json()
 
-      if (!data || !data.dailyForecasts) {
+      // 디버깅: 응답 데이터 콘솔 출력
+      console.log("📥 예보 API 응답 데이터:", response)
+
+      // 응답 검증
+      if (!response.success) {
+        throw new Error(response.message || "서버에서 오류가 발생했습니다.")
+      }
+
+      if (!response.data || !response.data.dailyForecasts) {
         throw new Error("서버 응답 형식이 올바르지 않습니다.")
       }
 
-      setForecastData(data)
+      setForecastData(response.data)
     } catch (err) {
       console.error("예보 API 요청 실패:", err)
       setForecastData(null)
