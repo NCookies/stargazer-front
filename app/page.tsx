@@ -13,7 +13,7 @@ import dynamic from "next/dynamic"
 import type { StargazingResponse, StargazingForecastResponse } from "@/types/api"
 import { useToast } from "@/hooks/use-toast"
 
-const MapSelector = dynamic(() => import("@/components/MapSelector"), {
+const MapSelector = dynamic(() => import("@/components/map/map-selector"), {
   ssr: false,
   loading: () => (
     <div className="w-full h-64 rounded-lg overflow-hidden border border-gray-700 relative z-0 bg-secondary/30 flex items-center justify-center">
