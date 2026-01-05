@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { MapPin } from "lucide-react"
 import dynamic from "next/dynamic"
-import type { StargazingResponse, StargazingForecastResponse } from "@/types/api"
+import type { StargazingResponse, StargazingForecastResponse, CommonResponse } from "@/types/api"
 import { useToast } from "@/hooks/use-toast"
 
 const MapSelector = dynamic(() => import("@/components/map/map-selector"), {
@@ -133,15 +133,22 @@ export default function Home() {
         throw new Error(`서버 오류: ${res.status} ${res.statusText}`)
       }
 
-      // 스프링 응답 데이터 파싱
-      const data: StargazingResponse = await res.json()
+      // 스프링 응답 데이터 파싱 (CommonResponse 래퍼)
+      const response: CommonResponse<StargazingResponse> = await res.json()
 
-      // 응답 데이터 검증
-      if (!data || typeof data.totalScore !== "number") {
+      // 디버깅: 응답 데이터 콘솔 출력
+      console.log("📥 API 응답 데이터:", response)
+
+      // 응답 검증
+      if (!response.success) {
+        throw new Error(response.message || "서버에서 오류가 발생했습니다.")
+      }
+
+      if (!response.data || typeof response.data.totalScore !== "number") {
         throw new Error("서버 응답 형식이 올바르지 않습니다.")
       }
 
-      setResponseData(data)
+      setResponseData(response.data)
       setHasResult(true)
       setResultKey(prev => prev + 1) // 결과 섹션 재렌더링 트리거
       
@@ -218,13 +225,22 @@ export default function Home() {
         throw new Error(errorMessage)
       }
 
-      const data: StargazingForecastResponse = await res.json()
+      // 스프링 응답 데이터 파싱 (CommonResponse 래퍼)
+      const response: CommonResponse<StargazingForecastResponse> = await res.json()
 
-      if (!data || !data.dailyForecasts) {
+      // 디버깅: 응답 데이터 콘솔 출력
+      console.log("📥 예보 API 응답 데이터:", response)
+
+      // 응답 검증
+      if (!response.success) {
+        throw new Error(response.message || "서버에서 오류가 발생했습니다.")
+      }
+
+      if (!response.data || !response.data.dailyForecasts) {
         throw new Error("서버 응답 형식이 올바르지 않습니다.")
       }
 
-      setForecastData(data)
+      setForecastData(response.data)
     } catch (err) {
       console.error("예보 API 요청 실패:", err)
       setForecastData(null)

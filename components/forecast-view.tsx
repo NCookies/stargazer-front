@@ -1,10 +1,11 @@
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Cloud, Star } from "lucide-react"
+import { Cloud, Star, Info, Sun, Sunset, Moon } from "lucide-react"
 import type { StargazingForecastResponse } from "@/types/api"
 import { Skeleton } from "@/components/ui/skeleton"
 import { MOON_PHASE_MAP } from "@/lib/utils"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
 interface ForecastViewProps {
   data: StargazingForecastResponse | null
@@ -65,8 +66,31 @@ export function ForecastView({ data, isLoading }: ForecastViewProps) {
         >
           <CardHeader className="pb-4">
             <CardTitle className="text-lg">{daily.date}</CardTitle>
-            <CardDescription>
-              {daily.hourlyForecasts.length}개 시간대 예보
+            <CardDescription className="space-y-2">
+              <div className="flex items-center gap-4 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <Sun className="w-3.5 h-3.5 text-orange-400" />
+                  <span className="text-muted-foreground">일출</span>
+                  <span className="font-medium">{daily.sunrise}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Sunset className="w-3.5 h-3.5 text-orange-500" />
+                  <span className="text-muted-foreground">일몰</span>
+                  <span className="font-medium">{daily.sunset}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <Moon className="w-3.5 h-3.5 text-accent" />
+                  <span className="text-muted-foreground">월출</span>
+                  <span className="font-medium">{daily.moonrise}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Moon className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="text-muted-foreground">월몰</span>
+                  <span className="font-medium">{daily.moonset}</span>
+                </div>
+              </div>
             </CardDescription>
           </CardHeader>
           <CardContent className="flex-1 space-y-3">
@@ -79,8 +103,35 @@ export function ForecastView({ data, isLoading }: ForecastViewProps) {
                   <div className={`text-base font-semibold ${getScoreTextColor(hourly.score)}`}>
                     {hourly.time}
                   </div>
-                  <div className={`text-2xl font-bold ${getScoreTextColor(hourly.score)}`}>
-                    {hourly.score}
+                  <div className="flex items-center gap-2">
+                    <div className={`text-2xl font-bold ${getScoreTextColor(hourly.score)}`}>
+                      {hourly.score}
+                    </div>
+                    {hourly.reasons && hourly.reasons.length > 0 && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className={`${getScoreTextColor(hourly.score)} opacity-70 hover:opacity-100 transition-opacity cursor-help`}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Info className="w-4 h-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <div className="space-y-1">
+                            <p className="font-semibold mb-2">분석 이유:</p>
+                            <ul className="list-disc list-inside space-y-1">
+                              {hourly.reasons.map((reason, idx) => (
+                                <li key={idx} className="text-xs">
+                                  {reason}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-xs">
