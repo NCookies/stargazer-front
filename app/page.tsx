@@ -186,10 +186,17 @@ export default function Home() {
     setForecastError(null)
 
     try {
+      // 현재 날짜와 시간 생성 (더미 데이터 - 백엔드 nonnull 요구사항 충족)
+      const now = new Date()
+      const currentDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+      const currentTime = "00:00" // 더미 시간 값
+
       // 쿼리 스트링 생성
       const queryParams = new URLSearchParams({
         lat: lat.toString(),
         lon: lon.toString(),
+        date: currentDate,
+        time: currentTime,
       })
 
       const requestUrl = `/api/v1/forecast?${queryParams.toString()}`

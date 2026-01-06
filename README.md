@@ -45,10 +45,31 @@ cd stargazer-front
 pnpm install
 ```
 
-3. 환경 변수 설정 (필요한 경우)
+3. 환경 변수 설정
+
+`.env.local` 파일에 다음 환경 변수를 설정하세요:
+
 ```bash
-# .env.local 파일 생성 및 필요한 환경 변수 설정
+# 백엔드 API 주소
+NEXT_PUBLIC_API_URL=http://localhost:8080
+# 배포 서버 테스트 시: NEXT_PUBLIC_API_URL=https://api.byeolbolil.xyz
+
+# 카카오 지도 API 키 (필수)
+# 카카오 개발자 콘솔(https://developers.kakao.com/)에서 발급받은 키를 입력하세요
+NEXT_PUBLIC_KAKAO_APP_KEY=your_javascript_key_here
+NEXT_PUBLIC_KAKAO_REST_API_KEY=your_rest_api_key_here
 ```
+
+**카카오 지도 API 키 발급 방법:**
+1. [카카오 개발자 콘솔](https://developers.kakao.com/) 접속
+2. 내 애플리케이션 > 애플리케이션 추가하기
+3. 플랫폼 > Web 플랫폼 등록
+   - 로컬 개발: `http://localhost:3000`
+   - 프로덕션: 실제 도메인 (예: `https://yourdomain.vercel.app`)
+4. 앱 키 > JavaScript 키 및 REST API 키 복사
+5. `.env.local` 파일에 입력
+
+자세한 설정 방법은 [`lib/map/KAKAO_SETUP.md`](lib/map/KAKAO_SETUP.md)를 참고하세요.
 
 4. 개발 서버 실행
 ```bash
@@ -98,15 +119,38 @@ stargazer-front/
 
 ## 🌐 API 연동
 
-백엔드 API는 `next.config.mjs`에서 프록시 설정되어 있습니다:
+백엔드 API는 환경 변수를 통해 설정됩니다:
 
-- 개발 환경: `http://localhost:8080/api`
-- 프로덕션 환경: 백엔드 서버 URL로 변경 필요
+- **로컬 개발 환경**: `NEXT_PUBLIC_API_URL=http://localhost:8080` (기본값)
+- **Vercel 배포 환경**: `NEXT_PUBLIC_API_URL=https://api.byeolbolil.xyz`
+
+### 환경 변수 설정
+
+#### 로컬 개발
+`.env.local` 파일에서 백엔드 주소를 설정할 수 있습니다:
+```bash
+# 로컬 백엔드 서버 사용 (기본값)
+NEXT_PUBLIC_API_URL=http://localhost:8080
+
+# 또는 배포 서버로 테스트
+NEXT_PUBLIC_API_URL=https://api.byeolbolil.xyz
+```
+
+환경 변수를 변경한 후에는 개발 서버를 재시작해야 합니다.
+
+#### Vercel 배포
+Vercel 프로젝트 설정에서 환경 변수를 추가하세요:
+1. Vercel 대시보드 → 프로젝트 선택 → Settings → Environment Variables
+2. `NEXT_PUBLIC_API_URL` 변수 추가
+3. Value: `https://api.byeolbolil.xyz`
+4. Environment: Production, Preview, Development 모두 선택
+
+또는 `vercel.json` 파일에 이미 설정되어 있습니다.
 
 ### 주요 API 엔드포인트
 
-- `POST /api/v1/analyze`: 특정 시간대의 관측 적합도 분석
-- `POST /api/v1/forecast`: 주간 관측 적합도 예보
+- `GET /api/v1/analyze`: 특정 시간대의 관측 적합도 분석
+- `GET /api/v1/forecast`: 주간 관측 적합도 예보
 
 ## 🎨 주요 기능
 
