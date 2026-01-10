@@ -40,6 +40,7 @@ export default function Home() {
 
   const [lat, setLat] = useState(37.5665); // 서울 기본값
   const [lon, setLon] = useState(126.9780);
+  const [isLocationInitialized, setIsLocationInitialized] = useState(false);
 
   // 선택된 시간 상태 (탭 전환 시에도 유지)
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
@@ -47,6 +48,41 @@ export default function Home() {
   // 마지막 분석에 사용한 좌표 저장
   const [lastAnalyzedLat, setLastAnalyzedLat] = useState<number | null>(null);
   const [lastAnalyzedLon, setLastAnalyzedLon] = useState<number | null>(null);
+
+  // 컴포넌트 마운트 시 현재 위치 가져오기
+  useEffect(() => {
+    if (isLocationInitialized) return // 이미 초기화되었으면 중복 실행 방지
+
+    if (!navigator.geolocation) {
+      console.log('Geolocation API를 지원하지 않는 브라우저입니다. 기본 위치(서울)를 사용합니다.')
+      setIsLocationInitialized(true)
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const currentLat = position.coords.latitude
+        const currentLon = position.coords.longitude
+        
+        console.log('현재 위치 가져오기 성공:', { lat: currentLat, lon: currentLon })
+        
+        // 현재 위치로 초기 좌표 설정
+        setLat(currentLat)
+        setLon(currentLon)
+        setIsLocationInitialized(true)
+      },
+      (error) => {
+        console.log('현재 위치 가져오기 실패, 기본 위치(서울)를 사용합니다:', error.message)
+        // 위치를 가져오지 못해도 기본값(서울)을 사용하므로 에러 처리하지 않음
+        setIsLocationInitialized(true)
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0, // 캐시된 위치 사용하지 않음
+      }
+    )
+  }, [isLocationInitialized])
 
   // 현재 관측 분석 API 호출
   const handleCalculate = async (selectedTimeOrKey: string) => {
