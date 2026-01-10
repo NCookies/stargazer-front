@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Search, Loader2, Star, Car, ParkingCircle, UtensilsCrossed, MapPin, Crosshair, Sparkles } from 'lucide-react'
+import { Search, Loader2, Star, Car, ParkingCircle, UtensilsCrossed, MapPin, Crosshair, Sparkles, Maximize2, Minimize2 } from 'lucide-react'
 import { useMapProvider } from './map-provider'
 import type { PlaceSearchResult, MapPosition } from '@/lib/map/types'
 import type { StargazingSpot, CommonResponse } from '@/types/api'
@@ -60,6 +60,9 @@ export default function MapSelector({
   const [searchRadius, setSearchRadius] = useState<number>(100) // km
   const [isSpotVisible, setIsSpotVisible] = useState(true)
   const [isSearchingSpots, setIsSearchingSpots] = useState(false)
+
+  // 지도 크기 토글 상태
+  const [isMapExpanded, setIsMapExpanded] = useState(false)
 
   // 지도 초기화
   useEffect(() => {
@@ -190,6 +193,20 @@ export default function MapSelector({
     }
     markerIdRef.current = mapProvider.setMarker({ lat, lng: lon })
   }, [lat, lon, isInitialized, mapProvider])
+
+  // 지도 크기 변경 시 리레이아웃
+  useEffect(() => {
+    if (!isInitialized || !mapProvider) return
+
+    // 지도 크기 변경 애니메이션 완료 후 리레이아웃
+    const timer = setTimeout(() => {
+      if (mapProvider.relayout) {
+        mapProvider.relayout()
+      }
+    }, 350) // transition duration 300ms + 여유 시간
+
+    return () => clearTimeout(timer)
+  }, [isMapExpanded, isInitialized, mapProvider])
 
   // 스팟 데이터 로드
   const loadSpots = useCallback(async (radius?: number) => {
@@ -519,7 +536,25 @@ export default function MapSelector({
       </form>
 
       {/* 지도 */}
-      <div className="w-full h-96 rounded-lg overflow-hidden border border-gray-700 relative z-0">
+      <div className={`w-full rounded-lg overflow-hidden border border-gray-700 relative z-0 transition-all duration-300 ${isMapExpanded ? 'h-[600px]' : 'h-96'}`}>
+        {/* 지도 크기 토글 버튼 */}
+        {isInitialized && (
+          <div className="absolute top-4 right-4 z-20">
+            <Button
+              variant="default"
+              size="icon"
+              className="rounded-full w-8 h-8 shadow-lg cursor-pointer bg-background/80 backdrop-blur-sm hover:bg-background"
+              onClick={() => setIsMapExpanded(!isMapExpanded)}
+              title={isMapExpanded ? '지도 축소' : '지도 확대'}
+            >
+              {isMapExpanded ? (
+                <Minimize2 className="w-4 h-4" />
+              ) : (
+                <Maximize2 className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
+        )}
         {/* 컨테이너는 항상 렌더링 (초기화를 위해 필요) */}
         <div
           ref={containerRef}

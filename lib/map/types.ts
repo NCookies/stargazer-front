@@ -133,5 +133,10 @@ export interface IMapProvider {
    * 지도가 초기화되었는지 여부
    */
   isInitialized(): boolean;
+
+  /**
+   * 지도 리레이아웃 (컨테이너 크기 변경 시 호출)
+   */
+  relayout?(): void;
 }
 

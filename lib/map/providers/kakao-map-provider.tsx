@@ -408,5 +408,15 @@ export class KakaoMapProvider implements IMapProvider {
   isInitialized(): boolean {
     return this.isLoaded && this.map !== null
   }
+
+  relayout(): void {
+    if (!this.map || typeof window === 'undefined' || !window.kakao) return
+    
+    try {
+      this.map.relayout()
+    } catch (error) {
+      console.error('[KakaoMapProvider] 리레이아웃 오류:', error)
+    }
+  }
 }
 
