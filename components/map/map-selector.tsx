@@ -3,13 +3,18 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Search, Loader2, Star, Car, ParkingCircle, UtensilsCrossed, MapPin, Crosshair } from 'lucide-react'
+import { Search, Loader2, Star, Car, ParkingCircle, UtensilsCrossed, MapPin, Crosshair, Sparkles } from 'lucide-react'
 import { useMapProvider } from './map-provider'
 import type { PlaceSearchResult, MapPosition } from '@/lib/map/types'
 import type { StargazingSpot, CommonResponse } from '@/types/api'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Slider } from '@/components/ui/slider'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
 
 interface MapSelectorProps {
   lat: number
@@ -49,6 +54,12 @@ export default function MapSelector({
 
   // 현재 위치 관련 상태
   const [isGettingLocation, setIsGettingLocation] = useState(false)
+
+  // 명소 찾기 관련 상태
+  const [isSpotSearchDialogOpen, setIsSpotSearchDialogOpen] = useState(false)
+  const [searchRadius, setSearchRadius] = useState<number>(100) // km
+  const [isSpotVisible, setIsSpotVisible] = useState(true)
+  const [isSearchingSpots, setIsSearchingSpots] = useState(false)
 
   // 지도 초기화
   useEffect(() => {
@@ -181,10 +192,23 @@ export default function MapSelector({
   }, [lat, lon, isInitialized, mapProvider])
 
   // 스팟 데이터 로드
-  const loadSpots = useCallback(async () => {
+  const loadSpots = useCallback(async (radius?: number) => {
     setIsLoadingSpots(true)
     try {
-      const response = await fetch('/api/v1/spots')
+      let url = '/api/v1/spots'
+      
+      // 반경이 지정되고 0보다 큰 경우 쿼리 파라미터 추가
+      if (radius !== undefined && radius > 0) {
+        const params = new URLSearchParams({
+          lat: lat.toString(),
+          lon: lon.toString(),
+          radius: radius.toString(),
+        })
+        url += `?${params.toString()}`
+      }
+      // radius가 0이거나 undefined면 전체 조회 (파라미터 없음)
+      
+      const response = await fetch(url)
       if (!response.ok) {
         throw new Error(`스팟 데이터를 불러올 수 없습니다: ${response.status}`)
       }
@@ -198,7 +222,7 @@ export default function MapSelector({
     } finally {
       setIsLoadingSpots(false)
     }
-  }, [])
+  }, [lat, lon])
 
   // 스팟 마커 아이콘 생성 (SVG를 base64로 변환)
   const createSpotMarkerImage = (): string => {
@@ -214,8 +238,8 @@ export default function MapSelector({
   useEffect(() => {
     if (!isInitialized || !mapProvider) return
 
-    if (spots.length === 0) {
-      // 스팟이 없으면 기존 스팟 마커 제거
+    // 명소 표시가 꺼져있으면 마커 제거
+    if (!isSpotVisible || spots.length === 0) {
       mapProvider.clearMarkersByType?.('spot')
       setSpotMarkers(new Map())
       return
@@ -251,7 +275,7 @@ export default function MapSelector({
 
     setSpotMarkers(newSpotMarkers)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isInitialized, mapProvider, spots])
+  }, [isInitialized, mapProvider, spots, isSpotVisible])
 
   // 마커 클릭 이벤트 핸들러 설정 (기존 핸들러 보존)
   useEffect(() => {
@@ -523,9 +547,139 @@ export default function MapSelector({
             )}
           </div>
         )}
-        {/* 현재 위치로 이동 버튼 */}
+        {/* 명소 찾기 및 현재 위치로 이동 버튼 */}
         {isInitialized && (
-          <div className="absolute bottom-4 right-4 z-20">
+          <div className="absolute bottom-4 right-4 z-20 flex flex-col gap-2">
+            {/* 명소 찾기 버튼 */}
+            <Dialog open={isSpotSearchDialogOpen} onOpenChange={setIsSpotSearchDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="default"
+                  size="icon"
+                  className="rounded-full w-10 h-10 shadow-lg cursor-pointer"
+                  title="명소 찾기"
+                >
+                  <Sparkles className="w-5 h-5" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>명소 찾기 설정</DialogTitle>
+                  <DialogDescription>
+                    파란색 마커 기준 반경 내의 명소를 찾거나 전체 명소를 조회할 수 있습니다.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-6 py-4">
+                  {/* 반경 설정 */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="radius" className="text-sm font-medium">
+                        검색 반경
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="radius"
+                          type="number"
+                          min={20}
+                          max={500}
+                          value={searchRadius}
+                          onChange={(e) => {
+                            const value = parseInt(e.target.value)
+                            if (!isNaN(value) && value >= 20 && value <= 500) {
+                              setSearchRadius(value)
+                            }
+                          }}
+                          className="w-20 h-8 text-sm"
+                        />
+                        <span className="text-sm text-muted-foreground">km</span>
+                      </div>
+                    </div>
+                    <Slider
+                      value={[searchRadius]}
+                      onValueChange={(value) => setSearchRadius(value[0])}
+                      min={20}
+                      max={500}
+                      step={10}
+                      className="w-full"
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>20km</span>
+                      <span>500km</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      반경을 설정하면 파란색 마커 기준 해당 반경 내의 명소만 표시됩니다.
+                    </p>
+                  </div>
+
+                  {/* 명소 표시 토글 */}
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="spot-visibility" className="text-sm font-medium">
+                        명소 아이콘 표시
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        지도에 명소 마커를 표시하거나 숨깁니다.
+                      </p>
+                    </div>
+                    <Switch
+                      id="spot-visibility"
+                      checked={isSpotVisible}
+                      onCheckedChange={setIsSpotVisible}
+                      className="data-[state=unchecked]:border-2 data-[state=unchecked]:border-border data-[state=unchecked]:bg-muted data-[state=unchecked]:dark:bg-muted/70"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      // 전체 명소 조회 (반경 없음)
+                      setIsSearchingSpots(true)
+                      try {
+                        await loadSpots()
+                        setIsSpotSearchDialogOpen(false)
+                      } finally {
+                        setIsSearchingSpots(false)
+                      }
+                    }}
+                    disabled={isSearchingSpots}
+                  >
+                    {isSearchingSpots ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        조회 중...
+                      </>
+                    ) : (
+                      '전체 조회'
+                    )}
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      // 반경 내 명소 조회
+                      setIsSearchingSpots(true)
+                      try {
+                        await loadSpots(searchRadius)
+                        setIsSpotSearchDialogOpen(false)
+                      } finally {
+                        setIsSearchingSpots(false)
+                      }
+                    }}
+                    disabled={isSearchingSpots}
+                  >
+                    {isSearchingSpots ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        검색 중...
+                      </>
+                    ) : (
+                      '반경 내 검색'
+                    )}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* 현재 위치로 이동 버튼 */}
             <Button
               variant="default"
               size="icon"
