@@ -8,8 +8,10 @@ import { ForecastView } from "@/components/forecast-view"
 import { StarField } from "@/components/star-field"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { MapPin } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { MapPin, Camera, ArrowRight } from "lucide-react"
 import dynamic from "next/dynamic"
+import Link from "next/link"
 import type { StargazingResponse, StargazingForecastResponse, CommonResponse } from "@/types/api"
 import { useToast } from "@/hooks/use-toast"
 
@@ -316,6 +318,29 @@ export default function Home() {
         <Header />
         <main className="container mx-auto px-4 py-8 max-w-6xl">
           <div className="space-y-8">
+            {/* 별 사진 촬영 가이드 배너 */}
+            <Card className="border-primary/50 bg-gradient-to-r from-primary/10 via-purple-500/10 to-accent/10 backdrop-blur-sm">
+              <CardContent className="pt-0">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Camera className="w-5 h-5 text-primary" />
+                      <h2 className="text-xl font-semibold">별 사진 촬영이 처음이신가요?</h2>
+                    </div>
+                    <p className="text-muted-foreground text-sm sm:text-base">
+                      스마트폰으로 별 사진을 찍는 방법을 단계별로 알아보세요
+                    </p>
+                  </div>
+                  <Link href="/guide">
+                    <Button size="lg" className="gap-2 w-full sm:w-auto">
+                      촬영 가이드 보기
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* 공동 지도 선택 */}
             <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
               <CardHeader>
