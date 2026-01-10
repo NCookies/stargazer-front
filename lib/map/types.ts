@@ -23,6 +23,22 @@ export interface MapEventHandlers {
   onMapClick?: (position: MapPosition) => void;
   onMapRightClick?: (position: MapPosition) => void;
   onMarkerDrag?: (position: MapPosition) => void;
+  onMarkerClick?: (markerId: string, data?: any) => void;
+}
+
+/**
+ * 마커 옵션 타입
+ */
+export interface MarkerOptions {
+  image?: {
+    src: string;
+    size: { width: number; height: number };
+    options?: { offset?: { x: number; y: number } };
+  };
+  clickable?: boolean;
+  draggable?: boolean;
+  zIndex?: number;
+  data?: any; // 마커에 연결할 추가 데이터
 }
 
 /**
@@ -64,10 +80,24 @@ export interface IMapProvider {
   setMarker(position: MapPosition, options?: Record<string, any>): string;
 
   /**
+   * 마커 추가 (여러 마커 관리용)
+   * @param position 마커 위치
+   * @param options 마커 옵션
+   * @returns 마커 ID
+   */
+  addMarker(position: MapPosition, options?: Record<string, any>): string;
+
+  /**
    * 마커 제거
    * @param markerId 마커 ID
    */
   removeMarker(markerId: string): void;
+
+  /**
+   * 특정 타입의 마커만 제거
+   * @param type 마커 타입 (예: 'spot', 'user')
+   */
+  clearMarkersByType?(type: string): void;
 
   /**
    * 모든 마커 제거

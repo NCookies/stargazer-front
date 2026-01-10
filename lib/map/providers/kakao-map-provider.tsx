@@ -19,14 +19,21 @@ declare global {
 /**
  * 카카오 지도 Provider 구현체
  */
+interface MarkerInfo {
+  marker: any
+  type: string // 'user' | 'spot'
+  data?: any
+}
+
 export class KakaoMapProvider implements IMapProvider {
   private map: any = null
-  private markers: Map<string, any> = new Map()
+  private markers: Map<string, MarkerInfo> = new Map()
   private nextMarkerId = 0
   private eventHandlers: MapEventHandlers = {}
   private isLoaded = false
   private containerId: string = ''
   private scriptLoaded = false
+  private userMarkerId: string | null = null // 사용자 지정 마커 ID
 
   /**
    * 카카오 지도 스크립트 로드
@@ -178,18 +185,20 @@ export class KakaoMapProvider implements IMapProvider {
 
     const markerPosition = new window.kakao.maps.LatLng(position.lat, position.lng)
 
-    // 기존에 마커가 하나라도 있으면 모두 제거하고 새로 생성
-    // (단일 마커만 유지하기 위해)
-    this.clearMarkers()
+    // 기존 사용자 지정 마커만 제거
+    if (this.userMarkerId) {
+      this.removeMarker(this.userMarkerId)
+    }
 
-    const markerId = `marker_${this.nextMarkerId++}`
+    const markerId = `user_marker_${this.nextMarkerId++}`
     const marker = new window.kakao.maps.Marker({
       position: markerPosition,
       ...options,
     })
 
     marker.setMap(this.map)
-    this.markers.set(markerId, marker)
+    this.markers.set(markerId, { marker, type: 'user' })
+    this.userMarkerId = markerId
 
     // 드래그 이벤트 핸들러
     if (this.eventHandlers.onMarkerDrag) {
@@ -205,19 +214,102 @@ export class KakaoMapProvider implements IMapProvider {
     return markerId
   }
 
+  addMarker(position: MapPosition, options?: Record<string, any>): string {
+    if (!this.map) {
+      throw new Error('지도가 초기화되지 않았습니다.')
+    }
+
+    const markerPosition = new window.kakao.maps.LatLng(position.lat, position.lng)
+    const markerType = (options?.type as string) || 'spot'
+    const markerData = options?.data
+
+    // 커스텀 이미지가 있는 경우
+    let markerOptions: any = {
+      position: markerPosition,
+    }
+
+    if (options?.image) {
+      const imageSrc = options.image.src
+      const imageSize = new window.kakao.maps.Size(
+        options.image.size.width,
+        options.image.size.height
+      )
+      const imageOption = options.image.options?.offset
+        ? { offset: new window.kakao.maps.Point(options.image.options.offset.x, options.image.options.offset.y) }
+        : {}
+
+      const image = new window.kakao.maps.MarkerImage(imageSrc, imageSize, imageOption)
+      markerOptions.image = image
+    }
+
+    if (options?.clickable !== undefined) {
+      markerOptions.clickable = options.clickable
+    }
+
+    if (options?.zIndex !== undefined) {
+      markerOptions.zIndex = options.zIndex
+    }
+
+    const markerId = `${markerType}_marker_${this.nextMarkerId++}`
+    const marker = new window.kakao.maps.Marker(markerOptions)
+    marker.setMap(this.map)
+    this.markers.set(markerId, { marker, type: markerType, data: markerData })
+
+    // 클릭 이벤트 핸들러
+    if (options?.clickable !== false && this.eventHandlers.onMarkerClick) {
+      window.kakao.maps.event.addListener(marker, 'click', () => {
+        this.eventHandlers.onMarkerClick?.(markerId, markerData)
+      })
+    }
+
+    // 드래그 이벤트 핸들러
+    if (options?.draggable && this.eventHandlers.onMarkerDrag) {
+      marker.setDraggable(true)
+      window.kakao.maps.event.addListener(marker, 'dragend', () => {
+        const pos = marker.getPosition()
+        this.eventHandlers.onMarkerDrag?.({
+          lat: pos.getLat(),
+          lng: pos.getLng(),
+        })
+      })
+    }
+
+    return markerId
+  }
+
   removeMarker(markerId: string): void {
-    const marker = this.markers.get(markerId)
-    if (marker) {
-      marker.setMap(null)
+    const markerInfo = this.markers.get(markerId)
+    if (markerInfo) {
+      markerInfo.marker.setMap(null)
       this.markers.delete(markerId)
+      if (markerId === this.userMarkerId) {
+        this.userMarkerId = null
+      }
     }
   }
 
+  clearMarkersByType(type: string): void {
+    const toRemove: string[] = []
+    this.markers.forEach((markerInfo, markerId) => {
+      if (markerInfo.type === type) {
+        markerInfo.marker.setMap(null)
+        toRemove.push(markerId)
+      }
+    })
+    toRemove.forEach((id) => {
+      this.markers.delete(id)
+      if (id === this.userMarkerId) {
+        this.userMarkerId = null
+      }
+    })
+  }
+
   clearMarkers(): void {
-    this.markers.forEach((marker) => {
-      marker.setMap(null)
+    this.markers.forEach((markerInfo) => {
+      markerInfo.marker.setMap(null)
     })
     this.markers.clear()
+    this.userMarkerId = null
     this.nextMarkerId = 0
   }
 
@@ -310,6 +402,7 @@ export class KakaoMapProvider implements IMapProvider {
     this.eventHandlers = {}
     this.map = null
     this.isLoaded = false
+    this.userMarkerId = null
   }
 
   isInitialized(): boolean {

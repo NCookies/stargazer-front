@@ -3,9 +3,13 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Search, Loader2 } from 'lucide-react'
+import { Search, Loader2, Star, Car, ParkingCircle, UtensilsCrossed } from 'lucide-react'
 import { useMapProvider } from './map-provider'
 import type { PlaceSearchResult, MapPosition } from '@/lib/map/types'
+import type { StargazingSpot, CommonResponse } from '@/types/api'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 
 interface MapSelectorProps {
   lat: number
@@ -35,6 +39,13 @@ export default function MapSelector({
   const [showResults, setShowResults] = useState(false)
 
   const [initError, setInitError] = useState<string | null>(null)
+
+  // 스팟 관련 상태
+  const [spots, setSpots] = useState<StargazingSpot[]>([])
+  const [isLoadingSpots, setIsLoadingSpots] = useState(false)
+  const [spotMarkers, setSpotMarkers] = useState<Map<number, string>>(new Map()) // spotId -> markerId
+  const [selectedSpot, setSelectedSpot] = useState<StargazingSpot | null>(null)
+  const [openSpotId, setOpenSpotId] = useState<number | null>(null)
 
   // 지도 초기화
   useEffect(() => {
@@ -97,12 +108,15 @@ export default function MapSelector({
         .initialize(containerIdRef.current, { lat, lng: lon }, { zoom: 10 })
         .then(() => {
           console.log('[MapSelector] 지도 초기화 성공')
-          // 이벤트 핸들러 설정
+          // 초기 이벤트 핸들러 설정
           mapProvider.setEventHandlers({
             onMapClick: async (position) => {
               console.log('[MapSelector] 지도 클릭 이벤트:', position)
               // 일반 클릭: 지도 중심 이동만
               mapProvider.setCenter(position, true)
+              // 스팟 정보 닫기
+              setSelectedSpot(null)
+              setOpenSpotId(null)
             },
             onMapRightClick: async (position) => {
               console.log('[MapSelector] 지도 우클릭 이벤트:', position)
@@ -131,6 +145,9 @@ export default function MapSelector({
           markerIdRef.current = mapProvider.setMarker({ lat, lng: lon })
           setIsInitialized(true)
           setInitError(null)
+          
+          // 스팟 데이터 로드
+          loadSpots()
         })
         .catch((error) => {
           const errorMessage = error?.message || '지도 초기화 중 오류가 발생했습니다.'
@@ -153,12 +170,106 @@ export default function MapSelector({
 
     mapProvider.setCenter({ lat, lng: lon }, true)
 
-    // 마커 업데이트
+    // 사용자 지정 마커 업데이트 (스팟 마커는 유지)
     if (markerIdRef.current) {
       mapProvider.removeMarker(markerIdRef.current)
     }
     markerIdRef.current = mapProvider.setMarker({ lat, lng: lon })
   }, [lat, lon, isInitialized, mapProvider])
+
+  // 스팟 데이터 로드
+  const loadSpots = useCallback(async () => {
+    setIsLoadingSpots(true)
+    try {
+      const response = await fetch('/api/v1/spots')
+      if (!response.ok) {
+        throw new Error(`스팟 데이터를 불러올 수 없습니다: ${response.status}`)
+      }
+      
+      const result: CommonResponse<StargazingSpot[]> = await response.json()
+      if (result.success && result.data) {
+        setSpots(result.data)
+      }
+    } catch (error) {
+      console.error('스팟 데이터 로드 오류:', error)
+    } finally {
+      setIsLoadingSpots(false)
+    }
+  }, [])
+
+  // 스팟 마커 아이콘 생성 (SVG를 base64로 변환)
+  const createSpotMarkerImage = (): string => {
+    const svg = `<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="20" cy="20" r="18" fill="#f97316" stroke="#fff" stroke-width="2"/>
+      <path d="M20 8 L23 15 L30 16 L24 21 L26 28 L20 24 L14 28 L16 21 L10 16 L17 15 Z" fill="#fff"/>
+    </svg>`.trim()
+    // SVG를 URL 인코딩하여 사용 (base64 대신)
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)
+  }
+
+  // 스팟 마커 표시
+  useEffect(() => {
+    if (!isInitialized || !mapProvider) return
+
+    if (spots.length === 0) {
+      // 스팟이 없으면 기존 스팟 마커 제거
+      mapProvider.clearMarkersByType?.('spot')
+      setSpotMarkers(new Map())
+      return
+    }
+
+    // 기존 스팟 마커 제거
+    mapProvider.clearMarkersByType?.('spot')
+
+    // 스팟 마커 이미지 생성
+    const spotMarkerImageSrc = createSpotMarkerImage()
+    const markerImageSize = { width: 40, height: 40 }
+    const markerImageOffset = { x: 20, y: 20 }
+
+    // 각 스팟에 마커 추가
+    const newSpotMarkers = new Map<number, string>()
+    spots.forEach((spot) => {
+      const markerId = mapProvider.addMarker(
+        { lat: spot.latitude, lng: spot.longitude },
+        {
+          type: 'spot',
+          data: spot,
+          image: {
+            src: spotMarkerImageSrc,
+            size: markerImageSize,
+            options: { offset: markerImageOffset },
+          },
+          clickable: true,
+          zIndex: 1, // 사용자 마커보다 낮은 z-index
+        }
+      )
+      newSpotMarkers.set(spot.id, markerId)
+    })
+
+    setSpotMarkers(newSpotMarkers)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isInitialized, mapProvider, spots])
+
+  // 마커 클릭 이벤트 핸들러 설정 (기존 핸들러 보존)
+  useEffect(() => {
+    if (!isInitialized || !mapProvider) return
+
+    // 스팟이 변경될 때마다 마커 클릭 핸들러 업데이트
+    mapProvider.setEventHandlers({
+      onMarkerClick: (markerId: string, data?: any) => {
+        if (data && typeof data.id === 'number') {
+          const spot = spots.find((s) => s.id === data.id)
+          if (spot) {
+            // 지도 중심 이동
+            mapProvider.setCenter({ lat: spot.latitude, lng: spot.longitude }, true)
+            // 스팟 정보 표시
+            setSelectedSpot(spot)
+            setOpenSpotId(spot.id)
+          }
+        }
+      },
+    })
+  }, [isInitialized, mapProvider, spots])
 
   // 장소 검색
   const searchLocation = useCallback(
@@ -339,6 +450,63 @@ export default function MapSelector({
             ) : (
               <p className="text-muted-foreground">지도를 불러오는 중...</p>
             )}
+          </div>
+        )}
+        {/* 스팟 마커 클릭 시 표시되는 상세 정보 카드 */}
+        {selectedSpot && openSpotId === selectedSpot.id && (
+          <div className="absolute top-4 right-4 z-20 max-w-sm w-full">
+            <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
+              <CardHeader>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Star className="w-5 h-5 text-primary" />
+                      {selectedSpot.title}
+                    </CardTitle>
+                    <CardDescription className="mt-1 text-xs">
+                      {selectedSpot.address}
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={() => {
+                      setSelectedSpot(null)
+                      setOpenSpotId(null)
+                    }}
+                  >
+                    ×
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">{selectedSpot.description}</p>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="text-xs">
+                    Bortle {selectedSpot.bortleScale}
+                  </Badge>
+                  {selectedSpot.isParkingAvailable && (
+                    <Badge variant="outline" className="text-xs flex items-center gap-1">
+                      <ParkingCircle className="w-3 h-3" />
+                      주차 가능
+                    </Badge>
+                  )}
+                  {selectedSpot.isRestroomAvailable && (
+                    <Badge variant="outline" className="text-xs flex items-center gap-1">
+                      <UtensilsCrossed className="w-3 h-3" />
+                      화장실
+                    </Badge>
+                  )}
+                  {selectedSpot.isCarAccess && (
+                    <Badge variant="outline" className="text-xs flex items-center gap-1">
+                      <Car className="w-3 h-3" />
+                      차량 접근
+                    </Badge>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>
