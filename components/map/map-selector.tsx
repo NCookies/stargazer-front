@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Search, Loader2, Star, Car, ParkingCircle, UtensilsCrossed } from 'lucide-react'
+import { Search, Loader2, Star, Car, ParkingCircle, UtensilsCrossed, MapPin, Crosshair } from 'lucide-react'
 import { useMapProvider } from './map-provider'
 import type { PlaceSearchResult, MapPosition } from '@/lib/map/types'
 import type { StargazingSpot, CommonResponse } from '@/types/api'
@@ -46,6 +46,9 @@ export default function MapSelector({
   const [spotMarkers, setSpotMarkers] = useState<Map<number, string>>(new Map()) // spotId -> markerId
   const [selectedSpot, setSelectedSpot] = useState<StargazingSpot | null>(null)
   const [openSpotId, setOpenSpotId] = useState<number | null>(null)
+
+  // 현재 위치 관련 상태
+  const [isGettingLocation, setIsGettingLocation] = useState(false)
 
   // 지도 초기화
   useEffect(() => {
@@ -199,9 +202,9 @@ export default function MapSelector({
 
   // 스팟 마커 아이콘 생성 (SVG를 base64로 변환)
   const createSpotMarkerImage = (): string => {
-    const svg = `<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="20" cy="20" r="18" fill="#f97316" stroke="#fff" stroke-width="2"/>
-      <path d="M20 8 L23 15 L30 16 L24 21 L26 28 L20 24 L14 28 L16 21 L10 16 L17 15 Z" fill="#fff"/>
+    const svg = `<svg width="30" height="30" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="15" cy="15" r="13" fill="#f97316" stroke="#fff" stroke-width="1.5"/>
+      <path d="M15 6 L17.25 11.25 L22.5 12 L18.75 15.75 L20.25 21 L15 18 L9.75 21 L11.25 15.75 L7.5 12 L12.75 11.25 Z" fill="#fff"/>
     </svg>`.trim()
     // SVG를 URL 인코딩하여 사용 (base64 대신)
     return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)
@@ -223,8 +226,8 @@ export default function MapSelector({
 
     // 스팟 마커 이미지 생성
     const spotMarkerImageSrc = createSpotMarkerImage()
-    const markerImageSize = { width: 40, height: 40 }
-    const markerImageOffset = { x: 20, y: 20 }
+    const markerImageSize = { width: 30, height: 30 }
+    const markerImageOffset = { x: 15, y: 15 }
 
     // 각 스팟에 마커 추가
     const newSpotMarkers = new Map<number, string>()
@@ -270,6 +273,74 @@ export default function MapSelector({
       },
     })
   }, [isInitialized, mapProvider, spots])
+
+  // 현재 위치로 이동
+  const moveToCurrentLocation = useCallback(async () => {
+    if (!mapProvider || !isInitialized) return
+
+    setIsGettingLocation(true)
+    try {
+      // Geolocation API 사용
+      if (!navigator.geolocation) {
+        alert('이 브라우저는 위치 서비스를 지원하지 않습니다.')
+        return
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const currentLat = position.coords.latitude
+          const currentLon = position.coords.longitude
+
+          // 지도 중심 이동
+          mapProvider.setCenter({ lat: currentLat, lng: currentLon }, true)
+
+          // 사용자 지정 마커 위치 변경
+          if (markerIdRef.current) {
+            mapProvider.removeMarker(markerIdRef.current)
+            markerIdRef.current = null
+          }
+          markerIdRef.current = mapProvider.setMarker({ lat: currentLat, lng: currentLon })
+
+          // 좌표 업데이트
+          setLat(currentLat)
+          setLon(currentLon)
+
+          // 주소 변환
+          const address = await mapProvider.getAddressFromPosition({
+            lat: currentLat,
+            lng: currentLon,
+          })
+          setLocationName?.(address)
+        },
+        (error) => {
+          console.error('위치 정보 가져오기 오류:', error)
+          let errorMessage = '위치 정보를 가져올 수 없습니다.'
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = '위치 정보 접근이 거부되었습니다. 브라우저 설정에서 위치 권한을 허용해주세요.'
+              break
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = '위치 정보를 사용할 수 없습니다.'
+              break
+            case error.TIMEOUT:
+              errorMessage = '위치 정보 요청 시간이 초과되었습니다.'
+              break
+          }
+          alert(errorMessage)
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        }
+      )
+    } catch (error) {
+      console.error('현재 위치 이동 오류:', error)
+      alert('현재 위치로 이동하는 중 오류가 발생했습니다.')
+    } finally {
+      setIsGettingLocation(false)
+    }
+  }, [mapProvider, isInitialized, setLat, setLon, setLocationName])
 
   // 장소 검색
   const searchLocation = useCallback(
@@ -452,6 +523,25 @@ export default function MapSelector({
             )}
           </div>
         )}
+        {/* 현재 위치로 이동 버튼 */}
+        {isInitialized && (
+          <div className="absolute bottom-4 right-4 z-20">
+            <Button
+              variant="default"
+              size="icon"
+              className="rounded-full w-10 h-10 shadow-lg cursor-pointer"
+              onClick={moveToCurrentLocation}
+              disabled={isGettingLocation}
+              title="현재 위치로 이동"
+            >
+              {isGettingLocation ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Crosshair className="w-5 h-5" />
+              )}
+            </Button>
+          </div>
+        )}
         {/* 스팟 마커 클릭 시 표시되는 상세 정보 카드 */}
         {selectedSpot && openSpotId === selectedSpot.id && (
           <div className="absolute top-4 right-4 z-20 max-w-sm w-full">
@@ -505,6 +595,41 @@ export default function MapSelector({
                     </Badge>
                   )}
                 </div>
+                <Button
+                  variant="default"
+                  className="w-full mt-2"
+                  onClick={async () => {
+                    if (selectedSpot) {
+                      // 좌표 업데이트
+                      setLat(selectedSpot.latitude)
+                      setLon(selectedSpot.longitude)
+                      
+                      // 사용자 지정 마커 위치 변경
+                      if (markerIdRef.current) {
+                        mapProvider.removeMarker(markerIdRef.current)
+                        markerIdRef.current = null
+                      }
+                      markerIdRef.current = mapProvider.setMarker({
+                        lat: selectedSpot.latitude,
+                        lng: selectedSpot.longitude,
+                      })
+                      
+                      // 주소 업데이트
+                      const address = await mapProvider.getAddressFromPosition({
+                        lat: selectedSpot.latitude,
+                        lng: selectedSpot.longitude,
+                      })
+                      setLocationName?.(address || selectedSpot.address)
+                      
+                      // 카드 닫기
+                      setSelectedSpot(null)
+                      setOpenSpotId(null)
+                    }
+                  }}
+                >
+                  <MapPin className="w-4 h-4 mr-2" />
+                  이 위치로 설정
+                </Button>
               </CardContent>
             </Card>
           </div>
