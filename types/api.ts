@@ -75,4 +75,3 @@ export interface StargazingSpot {
   isRestroomAvailable: boolean
   isCarAccess: boolean
 }
-

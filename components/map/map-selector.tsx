@@ -15,6 +15,11 @@ import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import { 
+  createSpotMarkerImageUrl, 
+  getSpotMarkerImageSize, 
+  getSpotMarkerImageOffset 
+} from '@/lib/map/marker-icons'
 
 interface MapSelectorProps {
   lat: number
@@ -241,16 +246,6 @@ export default function MapSelector({
     }
   }, [lat, lon])
 
-  // 스팟 마커 아이콘 생성 (SVG를 base64로 변환)
-  const createSpotMarkerImage = (): string => {
-    const svg = `<svg width="30" height="30" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="15" cy="15" r="13" fill="#f97316" stroke="#fff" stroke-width="1.5"/>
-      <path d="M15 6 L17.25 11.25 L22.5 12 L18.75 15.75 L20.25 21 L15 18 L9.75 21 L11.25 15.75 L7.5 12 L12.75 11.25 Z" fill="#fff"/>
-    </svg>`.trim()
-    // SVG를 URL 인코딩하여 사용 (base64 대신)
-    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)
-  }
-
   // 스팟 마커 표시
   useEffect(() => {
     if (!isInitialized || !mapProvider) return
@@ -265,10 +260,10 @@ export default function MapSelector({
     // 기존 스팟 마커 제거
     mapProvider.clearMarkersByType?.('spot')
 
-    // 스팟 마커 이미지 생성
-    const spotMarkerImageSrc = createSpotMarkerImage()
-    const markerImageSize = { width: 30, height: 30 }
-    const markerImageOffset = { x: 15, y: 15 }
+    // 스팟 마커 이미지 생성 (Sparkles 아이콘 형태)
+    const spotMarkerImageSrc = createSpotMarkerImageUrl()
+    const markerImageSize = getSpotMarkerImageSize()
+    const markerImageOffset = getSpotMarkerImageOffset()
 
     // 각 스팟에 마커 추가
     const newSpotMarkers = new Map<number, string>()
@@ -611,21 +606,8 @@ export default function MapSelector({
                       <Label htmlFor="radius" className="text-sm font-medium">
                         검색 반경
                       </Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          id="radius"
-                          type="number"
-                          min={20}
-                          max={500}
-                          value={searchRadius}
-                          onChange={(e) => {
-                            const value = parseInt(e.target.value)
-                            if (!isNaN(value) && value >= 20 && value <= 500) {
-                              setSearchRadius(value)
-                            }
-                          }}
-                          className="w-20 h-8 text-sm"
-                        />
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-medium">{searchRadius}</span>
                         <span className="text-sm text-muted-foreground">km</span>
                       </div>
                     </div>
