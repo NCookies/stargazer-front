@@ -62,3 +62,16 @@ export interface StargazingForecastResponse {
   dailyForecasts: DailyForecast[]
 }
 
+// 별보기 명소 스팟 관련 타입
+export interface StargazingSpot {
+  id: number
+  title: string
+  address: string
+  latitude: number
+  longitude: number
+  description: string
+  bortleScale: number // 1-9 스케일
+  isParkingAvailable: boolean
+  isRestroomAvailable: boolean
+  isCarAccess: boolean
+}

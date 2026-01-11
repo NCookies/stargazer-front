@@ -179,3 +179,40 @@
 .forecast-scroll::-webkit-scrollbar-thumb:hover {
   background: oklch(0.65 0.25 285 / 0.7);
 }
+
+/* Custom scrollbar for popover content */
+.popover-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.25 0.03 264 / 0.5) transparent;
+}
+
+.popover-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.popover-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.popover-scroll::-webkit-scrollbar-thumb {
+  background: oklch(0.25 0.03 264 / 0.5);
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+.popover-scroll::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.25 0.03 264 / 0.8);
+}
+
+.dark .popover-scroll {
+  scrollbar-color: oklch(0.269 0 0 / 0.5) transparent;
+}
+
+.dark .popover-scroll::-webkit-scrollbar-thumb {
+  background: oklch(0.269 0 0 / 0.5);
+}
+
+.dark .popover-scroll::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.269 0 0 / 0.8);
+}

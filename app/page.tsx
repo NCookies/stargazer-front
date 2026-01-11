@@ -8,8 +8,10 @@ import { ForecastView } from "@/components/forecast-view"
 import { StarField } from "@/components/star-field"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { MapPin } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { MapPin, Camera, ArrowRight } from "lucide-react"
 import dynamic from "next/dynamic"
+import Link from "next/link"
 import type { StargazingResponse, StargazingForecastResponse, CommonResponse } from "@/types/api"
 import { useToast } from "@/hooks/use-toast"
 
@@ -40,6 +42,7 @@ export default function Home() {
 
   const [lat, setLat] = useState(37.5665); // 서울 기본값
   const [lon, setLon] = useState(126.9780);
+  const [isLocationInitialized, setIsLocationInitialized] = useState(false);
 
   // 선택된 시간 상태 (탭 전환 시에도 유지)
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
@@ -47,6 +50,41 @@ export default function Home() {
   // 마지막 분석에 사용한 좌표 저장
   const [lastAnalyzedLat, setLastAnalyzedLat] = useState<number | null>(null);
   const [lastAnalyzedLon, setLastAnalyzedLon] = useState<number | null>(null);
+
+  // 컴포넌트 마운트 시 현재 위치 가져오기
+  useEffect(() => {
+    if (isLocationInitialized) return // 이미 초기화되었으면 중복 실행 방지
+
+    if (!navigator.geolocation) {
+      console.log('Geolocation API를 지원하지 않는 브라우저입니다. 기본 위치(서울)를 사용합니다.')
+      setIsLocationInitialized(true)
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const currentLat = position.coords.latitude
+        const currentLon = position.coords.longitude
+        
+        console.log('현재 위치 가져오기 성공:', { lat: currentLat, lon: currentLon })
+        
+        // 현재 위치로 초기 좌표 설정
+        setLat(currentLat)
+        setLon(currentLon)
+        setIsLocationInitialized(true)
+      },
+      (error) => {
+        console.log('현재 위치 가져오기 실패, 기본 위치(서울)를 사용합니다:', error.message)
+        // 위치를 가져오지 못해도 기본값(서울)을 사용하므로 에러 처리하지 않음
+        setIsLocationInitialized(true)
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0, // 캐시된 위치 사용하지 않음
+      }
+    )
+  }, [isLocationInitialized])
 
   // 현재 관측 분석 API 호출
   const handleCalculate = async (selectedTimeOrKey: string) => {
@@ -280,6 +318,29 @@ export default function Home() {
         <Header />
         <main className="container mx-auto px-4 py-8 max-w-6xl">
           <div className="space-y-8">
+            {/* 별 사진 촬영 가이드 배너 */}
+            <Card className="border-primary/50 bg-gradient-to-r from-primary/10 via-purple-500/10 to-accent/10 backdrop-blur-sm">
+              <CardContent className="pt-0">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Camera className="w-5 h-5 text-primary" />
+                      <h2 className="text-xl font-semibold">별 사진 촬영이 처음이신가요?</h2>
+                    </div>
+                    <p className="text-muted-foreground text-sm sm:text-base">
+                      스마트폰으로 별 사진을 찍는 방법을 단계별로 알아보세요
+                    </p>
+                  </div>
+                  <Link href="/guide">
+                    <Button size="lg" className="gap-2 w-full sm:w-auto">
+                      촬영 가이드 보기
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* 공동 지도 선택 */}
             <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
               <CardHeader>
