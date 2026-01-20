@@ -54,6 +54,7 @@ export class KakaoMapProvider implements IMapProvider {
         hasAppKey: !!appKey,
         appKeyLength: appKey?.length || 0,
         appKeyPrefix: appKey?.substring(0, 10) || 'N/A',
+        currentOrigin: typeof window !== 'undefined' ? window.location.origin : 'N/A',
       })
       
       if (!appKey) {
@@ -63,10 +64,33 @@ export class KakaoMapProvider implements IMapProvider {
         return
       }
 
-      script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${appKey}&autoload=false`
-      console.log('[KakaoMapProvider] 카카오 지도 스크립트 로드 시작:', script.src.substring(0, 50) + '...')
+      // API 키 형식 검증 (카카오 API 키는 보통 32자 이상)
+      if (appKey.length < 20) {
+        const errorMsg = `API 키가 너무 짧습니다 (${appKey.length}자). 올바른 카카오 JavaScript 키인지 확인하세요.`
+        console.error('[KakaoMapProvider]', errorMsg)
+        reject(new Error(errorMsg))
+        return
+      }
+
+      // 프로토콜을 명시적으로 https로 지정 (보안 및 호환성)
+      script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${appKey}&autoload=false`
+      console.log('[KakaoMapProvider] 카카오 지도 스크립트 로드 시작:', {
+        url: script.src.substring(0, 60) + '...',
+        hasAppKey: !!appKey,
+        appKeyLength: appKey.length,
+        currentOrigin: window.location.origin,
+      })
+      
+      // 타임아웃 설정 (30초)
+      const timeoutId = setTimeout(() => {
+        const errorMsg = '카카오 지도 스크립트 로드 타임아웃 (30초). 네트워크 연결을 확인하세요.'
+        console.error('[KakaoMapProvider]', errorMsg)
+        script.remove()
+        reject(new Error(errorMsg))
+      }, 30000)
       
       script.onload = () => {
+        clearTimeout(timeoutId)
         console.log('[KakaoMapProvider] 스크립트 로드 완료, 지도 API 초기화 중...')
         if (!window.kakao || !window.kakao.maps) {
           reject(new Error('카카오 지도 API가 로드되지 않았습니다.'))
@@ -80,8 +104,16 @@ export class KakaoMapProvider implements IMapProvider {
         })
       }
       script.onerror = (error) => {
+        clearTimeout(timeoutId)
         const errorMsg = '카카오 지도 스크립트를 로드할 수 없습니다. API 키와 네트워크 연결을 확인하세요.'
-        console.error('[KakaoMapProvider]', errorMsg, error)
+        console.error('[KakaoMapProvider] 스크립트 로드 실패:', {
+          error,
+          scriptSrc: script.src.substring(0, 80) + '...',
+          appKey: appKey ? `${appKey.substring(0, 10)}...` : '없음',
+          currentOrigin: window.location.origin,
+          hint: '다음 사항을 확인하세요:\n1. .env.local에 NEXT_PUBLIC_KAKAO_APP_KEY가 올바르게 설정되어 있는지\n2. 개발 서버를 재시작했는지\n3. 카카오 개발자 콘솔에서 도메인(' + window.location.origin + ')이 등록되어 있는지\n4. 네트워크 연결 상태\n5. API 키가 JavaScript 키인지 확인 (REST API 키가 아님)',
+        })
+        script.remove()
         reject(new Error(errorMsg))
       }
       document.head.appendChild(script)
