@@ -1,10 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { Telescope, LogIn, LogOut, User } from "lucide-react"
+import { Telescope, LogIn, LogOut, User, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { useToast } from "@/hooks/use-toast"
 import { authStore } from "@/lib/store/authStore"
 import { authApi } from "@/lib/api/authApi"
 
@@ -14,9 +15,15 @@ export function Header() {
   const user = authStore((state) => state.user)
   const [isLogoutHovered, setIsLogoutHovered] = useState(false)
   const [isLoginHovered, setIsLoginHovered] = useState(false)
+  const { toast } = useToast()
 
   const handleLogout = async () => {
     await authApi.logout()
+    toast({
+      title: '로그아웃 완료',
+      description: '정상적으로 로그아웃되었습니다.',
+      icon: <CheckCircle2 className="w-5 h-5 text-green-500" />,
+    })
     router.push('/')
   }
 
@@ -48,7 +55,7 @@ export function Header() {
                   onClick={handleLogout}
                   onMouseEnter={() => setIsLogoutHovered(true)}
                   onMouseLeave={() => setIsLogoutHovered(false)}
-                  className="gap-2 transition-all"
+                  className="gap-2 transition-all cursor-pointer"
                 >
                   {isLogoutHovered ? (
                     <User className="w-4 h-4 transition-transform" />
@@ -65,7 +72,7 @@ export function Header() {
                 onClick={() => router.push('/login')}
                 onMouseEnter={() => setIsLoginHovered(true)}
                 onMouseLeave={() => setIsLoginHovered(false)}
-                className="gap-2 transition-all"
+                className="gap-2 transition-all cursor-pointer"
               >
                 {isLoginHovered ? (
                   <User className="w-4 h-4 transition-transform" />
