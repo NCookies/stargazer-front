@@ -14,6 +14,7 @@ import dynamic from "next/dynamic"
 import Link from "next/link"
 import type { StargazingResponse, StargazingForecastResponse, CommonResponse } from "@/types/api"
 import { useToast } from "@/hooks/use-toast"
+import { stargazingApi } from "@/lib/api"
 
 const MapSelector = dynamic(() => import("@/components/map/map-selector"), {
   ssr: false,
@@ -152,41 +153,29 @@ export default function Home() {
       // 디버깅: 전송되는 데이터 확인
       console.log("📅 전송되는 날짜/시간 (한국 시간 기준):", { date: currentDate, time: currentTime, localTime: now.toString() })
 
-      // 쿼리 스트링 생성
-      const queryParams = new URLSearchParams({
-        lat: lat.toString(),
-        lon: lon.toString(),
+      // 시간 문자열을 객체로 변환 (HH:mm 형식)
+      const [hour, minute] = currentTime.split(':').map(Number)
+
+      // 새로운 API 클라이언트 사용
+      const response = await stargazingApi.analyzeStargazingCondition({
+        lat,
+        lon,
         date: currentDate,
-        time: currentTime,
+        time: {
+          hour,
+          minute,
+        },
       })
-
-      const requestUrl = `/api/v1/analyze?${queryParams.toString()}`
-      console.log("📤 API 요청 URL:", requestUrl)
-
-      const res = await fetch(requestUrl, {
-        method: "GET",
-      })
-
-      if (!res.ok) {
-        throw new Error(`서버 오류: ${res.status} ${res.statusText}`)
-      }
-
-      // 스프링 응답 데이터 파싱 (CommonResponse 래퍼)
-      const response: CommonResponse<StargazingResponse> = await res.json()
 
       // 디버깅: 응답 데이터 콘솔 출력
       console.log("📥 API 응답 데이터:", response)
 
       // 응답 검증
-      if (!response.success) {
-        throw new Error(response.message || "서버에서 오류가 발생했습니다.")
-      }
-
-      if (!response.data || typeof response.data.totalScore !== "number") {
+      if (!response || typeof response.totalScore !== "number") {
         throw new Error("서버 응답 형식이 올바르지 않습니다.")
       }
 
-      setResponseData(response.data)
+      setResponseData(response as StargazingResponse)
       setHasResult(true)
       setResultKey(prev => prev + 1) // 결과 섹션 재렌더링 트리거
       
@@ -197,7 +186,7 @@ export default function Home() {
       // 성공 토스트 메시지 표시
       toast({
         title: "분석 완료",
-        description: `${response.data.date} ${response.data.time} 시간대의 관측 적합도 분석이 완료되었습니다.`,
+        description: `${response.date} ${response.time} 시간대의 관측 적합도 분석이 완료되었습니다.`,
       })
     } catch (err) {
       console.error("API 요청 실패:", err)
@@ -229,63 +218,29 @@ export default function Home() {
       const currentDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
       const currentTime = "00:00" // 더미 시간 값
 
-      // 쿼리 스트링 생성
-      const queryParams = new URLSearchParams({
-        lat: lat.toString(),
-        lon: lon.toString(),
+      // 시간 문자열을 객체로 변환 (HH:mm 형식)
+      const [hour, minute] = currentTime.split(':').map(Number)
+
+      // 새로운 API 클라이언트 사용
+      const response = await stargazingApi.getForecast({
+        lat,
+        lon,
         date: currentDate,
-        time: currentTime,
+        time: {
+          hour,
+          minute,
+        },
       })
-
-      const requestUrl = `/api/v1/forecast?${queryParams.toString()}`
-      console.log("📤 예보 API 요청 URL:", requestUrl)
-
-      const res = await fetch(requestUrl, {
-        method: "GET",
-      })
-
-      if (!res.ok) {
-        // 서버 에러 응답 본문 읽기 시도
-        let errorMessage = `서버 오류: ${res.status} ${res.statusText}`
-        try {
-          const errorData = await res.json()
-          console.error("서버 에러 응답:", errorData)
-          if (errorData.message) {
-            errorMessage = `서버 오류: ${errorData.message}`
-          } else if (typeof errorData === 'string') {
-            errorMessage = `서버 오류: ${errorData}`
-          }
-        } catch (parseError) {
-          // JSON 파싱 실패 시 텍스트로 읽기 시도
-          try {
-            const errorText = await res.text()
-            console.error("서버 에러 응답 (텍스트):", errorText)
-            if (errorText) {
-              errorMessage = `서버 오류: ${errorText.substring(0, 200)}`
-            }
-          } catch (textError) {
-            console.error("에러 응답 읽기 실패:", textError)
-          }
-        }
-        throw new Error(errorMessage)
-      }
-
-      // 스프링 응답 데이터 파싱 (CommonResponse 래퍼)
-      const response: CommonResponse<StargazingForecastResponse> = await res.json()
 
       // 디버깅: 응답 데이터 콘솔 출력
       console.log("📥 예보 API 응답 데이터:", response)
 
       // 응답 검증
-      if (!response.success) {
-        throw new Error(response.message || "서버에서 오류가 발생했습니다.")
-      }
-
-      if (!response.data || !response.data.dailyForecasts) {
+      if (!response || !response.dailyForecasts) {
         throw new Error("서버 응답 형식이 올바르지 않습니다.")
       }
 
-      setForecastData(response.data)
+      setForecastData(response as StargazingForecastResponse)
     } catch (err) {
       console.error("예보 API 요청 실패:", err)
       setForecastData(null)
