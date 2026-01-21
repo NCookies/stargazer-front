@@ -1,0 +1,44 @@
+# Cursor Rules for Stargazer Frontend
+
+## API 클라이언트 구현
+
+새로운 API를 추가할 때는 다음 가이드를 참조하세요:
+
+1. **API_CLIENT_IMPLEMENTATION_GUIDE.md 파일을 먼저 읽어주세요**
+   - OpenAPI JSON 파일을 기반으로 API 클라이언트를 구현하는 전체 프로세스가 설명되어 있습니다.
+
+2. **IMPLEMENTED_APIS.md 파일을 확인하세요**
+   - 이미 구현된 API 목록을 확인하여 기존 API를 수정하지 않도록 합니다.
+   - 새로운 API만 추가하고, 기존 API는 그대로 유지합니다.
+
+3. **기본 프로세스**:
+   - OpenAPI JSON 파일에서 타입 생성 (`npx openapi-typescript`)
+   - `IMPLEMENTED_APIS.md`와 비교하여 새로운 엔드포인트만 확인
+   - `lib/api/` 디렉토리에 새로운 API 모듈 생성 (또는 기존 모듈에 추가)
+   - 타입 안전한 함수 구현
+   - 에러 처리 추가
+   - `lib/api/index.ts`에 export 추가
+
+4. **기존 API 보존**:
+   - `IMPLEMENTED_APIS.md`에 있는 API는 수정하지 않습니다.
+   - 기존 API의 특수 처리 로직 (예: LocalTime 변환)은 반드시 유지합니다.
+   - OpenAPI 스펙이 변경된 경우에만 필요한 부분만 최소한으로 업데이트합니다.
+
+5. **주요 패턴**:
+   - 모든 API는 `lib/api/client.ts`의 `api` 인스턴스를 사용
+   - CommonResponse 래퍼는 자동으로 처리됨
+   - LocalTime은 `HH:mm` 형식의 문자열로 전달
+   - 에러는 AxiosError로 처리하고 사용자 친화적인 메시지 표시
+
+6. **인증**:
+   - JWT Bearer 토큰은 자동으로 추가됨 (axios interceptor)
+   - 401 에러 시 자동으로 토큰 재발급 시도
+
+7. **문서 업데이트**:
+   - 새로운 API를 추가한 후 `IMPLEMENTED_APIS.md` 파일도 업데이트합니다.
+
+## 코드 스타일
+
+- TypeScript를 사용하며, 타입 안정성을 최우선으로 합니다.
+- 모든 API 호출은 try-catch로 감싸서 에러를 처리합니다.
+- 에러 메시지는 한국어로 사용자 친화적으로 작성합니다.
