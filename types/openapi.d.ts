@@ -4,6 +4,22 @@
  */
 
 export interface paths {
+    "/api/v1/bookmarks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getBookmarkList"];
+        put?: never;
+        post: operations["addBookmark"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/reissue": {
         parameters: {
             query?: never;
@@ -14,8 +30,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * ?��?��?�� ?��?�� ?��발급
-         * @description 리프?��?�� ?��?��?�� ?��?��?��?�� ?��로운 ?��?��?�� ?��?��?�� 발급받습?��?��. 리프?��?�� ?��?��?? 쿠키?��?�� ?��?��?���? ?��?��?��?��?��.
+         * 액세스 토큰 재발급
+         * @description 리프레시 토큰을 사용하여 새로운 액세스 토큰을 발급받습니다. 리프레시 토큰은 쿠키에서 자동으로 읽어옵니다.
          */
         post: operations["reissue"];
         delete?: never;
@@ -34,8 +50,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * ?��?���??��
-         * @description ?��로운 ?��?��?�� ?��록합?��?��. ?���? ?�� ?��?��?���? 로그?��?��?�� JWT ?��?��?�� ?��?���? 리프?��?�� ?��?��(쿠키)?�� 반환?��?��?��.
+         * 회원가입
+         * @description 새로운 회원을 등록합니다. 성공 시 자동으로 로그인되어 JWT 액세스 토큰과 리프레시 토큰(쿠키)을 반환합니다.
          */
         post: operations["register"];
         delete?: never;
@@ -54,8 +70,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 로그?��?��
-         * @description ?��?�� ?��?��?���? 로그?��?�� 처리?���? 리프?��?�� ?��?��?�� 무효?��?��?��?��. 리프?��?�� ?��?��?? 쿠키?��?�� ?��?��?���? ?��?��?��?��?��.
+         * 로그아웃
+         * @description 현재 사용자를 로그아웃 처리하고 리프레시 토큰을 무효화합니다. 리프레시 토큰은 쿠키에서 자동으로 읽어옵니다.
          */
         post: operations["logout"];
         delete?: never;
@@ -74,8 +90,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 로그?��
-         * @description ?��메일�? 비�?번호�? 로그?��?��?��?��. ?���? ?�� JWT ?��?��?�� ?��?���? 리프?��?�� ?��?��(쿠키)?�� 반환?��?��?��.
+         * 로그인
+         * @description 이메일과 비밀번호로 로그인합니다. 성공 시 JWT 액세스 토큰과 리프레시 토큰(쿠키)을 반환합니다.
          */
         post: operations["login"];
         delete?: never;
@@ -92,8 +108,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * �?측�? 조회
-         * @description �??��?�� ?��치�? 반경 ?��?�� �? �?측�?�? 조회?��?��?��. ?���? ?��?�� ?��?�� �??��?��?��?��.
+         * 관측지 조회
+         * @description 지정된 위치와 반경 내의 별 관측지를 조회합니다. 인증 없이 사용 가능합니다.
          */
         get: operations["getObservationSpots"];
         put?: never;
@@ -112,8 +128,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * ?�� ?���? 조회
-         * @description ?��?�� 로그?��?�� ?��?��?��?�� ?��보�?? 조회?��?��?��. JWT ?��?�� ?��증이 ?��?��?��?��?��.
+         * 내 정보 조회
+         * @description 현재 로그인한 사용자의 정보를 조회합니다. JWT 토큰 인증이 필요합니다.
          */
         get: operations["getMyInfo"];
         put?: never;
@@ -132,8 +148,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * ?��메일 중복 �?�?
-         * @description ?��?���??�� ?�� ?��메일 중복 ?���?�? ?��?��?��?��?��. ?���? ?��?�� ?��?�� �??��?��?��?��.
+         * 이메일 중복 검증
+         * @description 회원가입 시 이메일 중복 여부를 확인합니다. 인증 없이 사용 가능합니다.
          */
         get: operations["validateEmailDuplicated"];
         put?: never;
@@ -152,8 +168,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * �? �?�? ?���? 조회
-         * @description �??��?�� ?��치의 ?��?�� 며칠간의 �? �?�? ?��보�?? 조회?��?��?��. ?��짜별, ?��간�?별로 ?��?��?�� �?�? 조건 ?��?��?? ?��보�?? ?��공합?��?��. ?���? ?��?�� ?��?�� �??��?��?��?��.
+         * 별 관측 예보 조회
+         * @description 지정된 위치의 향후 며칠간의 별 관측 예보를 조회합니다. 날짜별, 시간대별로 상세한 관측 조건 점수와 정보를 제공합니다. 인증 없이 사용 가능합니다.
          */
         get: operations["getForecast"];
         put?: never;
@@ -172,8 +188,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * �? �?�? 조건 분석
-         * @description �??��?�� ?���?, ?���?, ?��간의 �? �?�? 조건?�� 종합?��?���? 분석?��?��?��. 기상 ?���?, 천문 ?���?, 광해 ?��보�?? ?��?��?�� ?��?�� 분석 결과�? ?��공합?��?��. ?���? ?��?�� ?��?�� �??��?��?��?��.
+         * 별 관측 조건 분석
+         * @description 지정된 위치, 날짜, 시간의 별 관측 조건을 종합적으로 분석합니다. 기상 정보, 천문 정보, 광해 정보를 포함한 상세 분석 결과를 제공합니다. 인증 없이 사용 가능합니다.
          */
         get: operations["analyzeStargazingCondition"];
         put?: never;
@@ -188,50 +204,75 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** @description ?���? ?��?�� ?��?�� DTO */
+        AddBookmarkRequest: {
+            /** @enum {string} */
+            type: "CUSTOM" | "SPOT";
+            /** Format: int64 */
+            spotId?: number;
+            name: string;
+            /** Format: double */
+            latitude?: number;
+            /** Format: double */
+            longitude?: number;
+            address?: string;
+        };
+        BookmarkResponse: {
+            /** Format: int64 */
+            bookmarkId?: number;
+            /** Format: int64 */
+            spotId?: number;
+            name?: string;
+            /** Format: double */
+            latitude?: number;
+            /** Format: double */
+            longitude?: number;
+            address?: string;
+            type?: string;
+        };
+        /** @description 인증 토큰 응답 DTO */
         AuthTokenResponse: {
             /**
-             * @description JWT ?��?��?�� ?��?��
+             * @description JWT 액세스 토큰
              * @example eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
              */
             accessToken?: string;
         };
-        /** @description ?��?���??�� ?���? ?���? */
+        /** @description 회원가입 요청 정보 */
         RegisterRequest: {
             /**
-             * @description ?��메일 주소
+             * @description 이메일 주소
              * @example user@example.com
              */
             email: string;
             /**
-             * @description 비�?번호
-             * @example password123
+             * @description 비밀번호 (8자 이상, 영문자/숫자/특수문자(!@#$%^&*) 각각 최소 1개 이상 포함)
+             * @example password123!
              */
             password: string;
             /**
-             * @description ?��?��?��
-             * @example 별보?���??��
+             * @description 닉네임
+             * @example 별보러가자
              */
             nickname: string;
         };
-        /** @description 로그?�� ?���? ?���? */
+        /** @description 로그인 요청 정보 */
         LoginRequest: {
             /**
-             * @description ?��메일 주소
+             * @description 이메일 주소
              * @example user@example.com
              */
             email: string;
             /**
-             * @description 비�?번호
+             * @description 비밀번호
              * @example password123
              */
             password: string;
         };
-        /** @description �?측�? 조회 ?���? DTO */
+        /** @description 관측지 조회 요청 DTO */
         ObservationSpotRequest: {
             /**
              * Format: double
-             * @description ?��?��
+             * @description 위도
              * @example 37.5665
              */
             lat: number;
@@ -243,32 +284,32 @@ export interface components {
             lon: number;
             /**
              * Format: int32
-             * @description �??�� 반경 (km)
+             * @description 검색 반경 (km)
              * @example 50
              */
             radius: number;
         };
-        /** @description �?측�? ?���? ?��?�� DTO */
+        /** @description 관측지 정보 응답 DTO */
         ObservationSpotResponse: {
             /**
              * Format: int64
-             * @description �?측�? ID
+             * @description 관측지 ID
              * @example 1
              */
             id?: number;
             /**
-             * @description �?측�? ?���?
-             * @example 강원?�� ?��창군 ??�??��
+             * @description 관측지 제목
+             * @example 강원도 평창군 대관령
              */
             title?: string;
             /**
              * @description 주소
-             * @example 강원?�� ?��창군 ??�??���?
+             * @example 강원도 평창군 대관령면
              */
             address?: string;
             /**
              * Format: double
-             * @description ?��?��
+             * @description 위도
              * @example 37.5665
              */
             latitude?: number;
@@ -279,61 +320,61 @@ export interface components {
              */
             longitude?: number;
             /**
-             * @description �?측�? ?���?
-             * @example 별이 ?�� 보이?�� 명소?��?��?��.
+             * @description 관측지 설명
+             * @example 별이 잘 보이는 명소입니다.
              */
             description?: string;
             /**
              * Format: int32
-             * @description 보�? ?���? (1-9, ?��?��?���? 좋음)
+             * @description 보틀 등급 (1-9, 낮을수록 좋음)
              * @example 3
              */
             bortleScale?: number;
             /**
-             * @description 주차 �??�� ?���?
+             * @description 주차 가능 여부
              * @example true
              */
             isParkingAvailable?: boolean;
             /**
-             * @description ?��?��?�� ?��?�� �??�� ?���?
+             * @description 화장실 이용 가능 여부
              * @example true
              */
             isRestroomAvailable?: boolean;
             /**
-             * @description 차량 ?���? �??�� ?���?
+             * @description 차량 접근 가능 여부
              * @example true
              */
             isCarAccess?: boolean;
             /**
-             * @description ?��?��?�� ?��미�? URL
+             * @description 썸네일 이미지 URL
              * @example https://example.com/image.jpg
              */
             thumbnailImage?: string;
         };
-        /** @description ?��?�� ?���? ?��?�� DTO */
+        /** @description 회원 정보 응답 DTO */
         MemberInfoResponse: {
             /**
              * Format: int64
-             * @description ?��?�� ID
+             * @description 회원 ID
              * @example 1
              */
             memberId?: number;
             /**
-             * @description ?��?��?��
-             * @example 별보?���??��
+             * @description 닉네임
+             * @example 별보러가자
              */
             nickname?: string;
         };
-        /** @description ?��메일 중복 �?�? ?��?�� DTO */
+        /** @description 이메일 중복 검증 응답 DTO */
         MemberValidationResponse: {
             /**
-             * @description �?�? 결과 (true: ?��?�� �??��, false: 중복?��)
+             * @description 검증 결과 (true: 사용 가능, false: 중복됨)
              * @example true
              */
             validated?: boolean;
         };
         /**
-         * @description �?�? ?���? (HH:mm ?��?��)
+         * @description 관측 시간 (HH:mm 형식)
          * @example 22:00
          */
         LocalTime: {
@@ -346,11 +387,11 @@ export interface components {
             /** Format: int32 */
             nano?: number;
         };
-        /** @description �? �?�? 조건 분석 ?���? DTO */
+        /** @description 별 관측 조건 분석 요청 DTO */
         StargazingRequest: {
             /**
              * Format: double
-             * @description ?��?��
+             * @description 위도
              * @example 37.5665
              */
             lat: number;
@@ -362,181 +403,181 @@ export interface components {
             lon: number;
             /**
              * Format: date
-             * @description �?�? ?���? (yyyy-MM-dd ?��?��)
+             * @description 관측 날짜 (yyyy-MM-dd 형식)
              * @example 2025-12-25
              */
             date: string;
             time: components["schemas"]["LocalTime"];
         };
-        /** @description ?���? ?���? */
+        /** @description 일별 예보 */
         DailyForecast: {
             /**
-             * @description ?���? (?��?�� ?��?��)
-             * @example 2025-05-20 (�?)
+             * @description 날짜 (요일 포함)
+             * @example 2025-05-20 (금)
              */
             date?: string;
             /**
-             * @description ?���? ?���?
+             * @description 일출 시간
              * @example 07:00
              */
             sunrise?: string;
             /**
-             * @description ?���? ?���?
+             * @description 일몰 시간
              * @example 18:00
              */
             sunset?: string;
             /**
-             * @description ?���? ?���?
+             * @description 월출 시간
              * @example 08:00
              */
             moonrise?: string;
             /**
-             * @description ?���? ?���?
+             * @description 월몰 시간
              * @example 20:00
              */
             moonset?: string;
-            /** @description ?��간�?�? ?���? 목록 */
+            /** @description 시간대별 예보 목록 */
             hourlyForecasts?: components["schemas"]["HourlyForecast"][];
         };
-        /** @description ?��간�?�? ?���? */
+        /** @description 시간대별 예보 */
         HourlyForecast: {
             /**
-             * @description ?���?
+             * @description 시간
              * @example 21:00
              */
             time?: string;
             /**
              * Format: int32
-             * @description �?�? ?��?�� (0-100)
+             * @description 관측 점수 (0-100)
              * @example 85
              */
             score?: number;
             /**
-             * @description 감점 ?��?�� 목록
+             * @description 감점 사유 목록
              * @example [
-             *       "구름?��?�� 많음"
+             *       "구름량이 많음"
              *     ]
              */
             reasons?: string[];
             /**
-             * @description �? ?���?
-             * @example 4.5?���?
+             * @description 별 등급
+             * @example 4.5등급
              */
             starGrade?: string;
             /**
              * Format: int32
-             * @description 구름?�� (%)
+             * @description 구름량 (%)
              * @example 20
              */
             cloudCover?: number;
             /**
-             * @description ?�� ?��?��
-             * @example 초승?��
+             * @description 달 위상
+             * @example 초승달
              */
             moonPhase?: string;
         };
-        /** @description �? �?�? ?���? ?��?�� DTO */
+        /** @description 별 관측 예보 응답 DTO */
         StargazingForecastResponse: {
-            /** @description ?��짜별 ?���? 목록 */
+            /** @description 날짜별 예보 목록 */
             dailyForecasts?: components["schemas"]["DailyForecast"][];
         };
-        /** @description 천문 ?���? */
+        /** @description 천문 정보 */
         AstronomyInfo: {
             /**
-             * @description ?�� ?��?��
-             * @example 초승?��
+             * @description 달 위상
+             * @example 초승달
              */
             moonPhase?: string;
             /**
-             * @description ?���? ?���?
+             * @description 일출 시간
              * @example 07:00
              */
             sunrise?: string;
             /**
-             * @description ?���? ?���?
+             * @description 일몰 시간
              * @example 18:00
              */
             sunset?: string;
             /**
-             * @description ?���? ?���?
+             * @description 월출 시간
              * @example 08:00
              */
             moonrise?: string;
             /**
-             * @description ?���? ?���?
+             * @description 월몰 시간
              * @example 20:00
              */
             moonset?: string;
         };
-        /** @description 광해 ?���? */
+        /** @description 광해 정보 */
         LightPollutionInfo: {
             /**
-             * @description 보�? ?���? ?��?��?��
+             * @description 보틀 등급 클래스
              * @example Class 3
              */
             bortleClass?: string;
             /**
-             * @description 밝기 ?���?
-             * @example ?��?��
+             * @description 밝기 수준
+             * @example 낮음
              */
             brightness?: string;
             /**
-             * @description ?���? ?���?
-             * @example 6?���?
+             * @description 한계 등급
+             * @example 6등급
              */
             limitingMag?: string;
         };
-        /** @description �? �?�? 조건 분석 ?��?�� DTO */
+        /** @description 별 관측 조건 분석 응답 DTO */
         StargazingAnalyzeResponse: {
             /**
-             * @description �?�? ?���?
+             * @description 관측 날짜
              * @example 2025-12-19
              */
             date?: string;
             /**
-             * @description �?�? ?���?
+             * @description 관측 시간
              * @example 22:00
              */
             time?: string;
             /**
              * Format: int32
-             * @description 종합 ?��?�� (0-100)
+             * @description 종합 점수 (0-100)
              * @example 85
              */
             totalScore?: number;
             /**
-             * @description ?��?�� 감점 ?��?�� 목록
+             * @description 점수 감점 사유 목록
              * @example [
-             *       "구름?��?�� 많음",
-             *       "?��?���? ?��?��"
+             *       "구름량이 많음",
+             *       "습도가 높음"
              *     ]
              */
             reasons?: string[];
             /**
-             * @description AI ?���? ?��
-             * @example ?��?�� �? �? �?측하�? 좋�? ?��?��?��?��?��!
+             * @description AI 한줄 평
+             * @example 오늘 밤 별 관측하기 좋은 날씨입니다!
              */
             aiComment?: string;
             weather?: components["schemas"]["WeatherInfo"];
             astronomy?: components["schemas"]["AstronomyInfo"];
             lightPollution?: components["schemas"]["LightPollutionInfo"];
         };
-        /** @description 기상 ?���? */
+        /** @description 기상 정보 */
         WeatherInfo: {
             /**
              * Format: int32
-             * @description 구름?�� (%)
+             * @description 구름량 (%)
              * @example 20
              */
             cloudIndex?: number;
             /**
              * Format: int32
-             * @description ?��?�� (%)
+             * @description 습도 (%)
              * @example 60
              */
             humidityIndex?: number;
             /**
-             * @description �??��?�� ?���?
+             * @description 가시도 등급
              * @example 매우 좋음
              */
             visibilityText?: string;
@@ -550,6 +591,50 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getBookmarkList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BookmarkResponse"][];
+                };
+            };
+        };
+    };
+    addBookmark: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddBookmarkRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BookmarkResponse"];
+                };
+            };
+        };
+    };
     reissue: {
         parameters: {
             query?: never;
@@ -559,7 +644,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description ?��?�� ?��발급 ?���? */
+            /** @description 토큰 재발급 성공 */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -568,7 +653,7 @@ export interface operations {
                     "*/*": components["schemas"]["AuthTokenResponse"];
                 };
             };
-            /** @description ?���? ?��?�� (리프?��?�� ?��?��?�� ?��?��?���? ?��거나 만료?��) */
+            /** @description 인증 실패 (리프레시 토큰이 유효하지 않거나 만료됨) */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -592,7 +677,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description ?��?���??�� ?���? */
+            /** @description 회원가입 성공 */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -601,7 +686,7 @@ export interface operations {
                     "*/*": components["schemas"]["AuthTokenResponse"];
                 };
             };
-            /** @description ?��못된 ?���? (?��메일 ?��?�� ?���?, ?��?�� ?��?�� ?��?��, ?��메일 중복 ?��) */
+            /** @description 잘못된 요청 (이메일 형식 오류, 필수 필드 누락, 이메일 중복 등) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -621,14 +706,14 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 로그?��?�� ?���? */
+            /** @description 로그아웃 성공 */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description ?���? ?��?�� (리프?��?�� ?��?��?�� ?��?��?���? ?��?��) */
+            /** @description 인증 실패 (리프레시 토큰이 유효하지 않음) */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -650,7 +735,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description 로그?�� ?���? */
+            /** @description 로그인 성공 */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -659,7 +744,7 @@ export interface operations {
                     "*/*": components["schemas"]["AuthTokenResponse"];
                 };
             };
-            /** @description ?��못된 ?���? (?��메일 ?��?�� ?���?, ?��?�� ?��?�� ?��?�� ?��) */
+            /** @description 잘못된 요청 (이메일 형식 오류, 필수 필드 누락 등) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -668,7 +753,7 @@ export interface operations {
                     "*/*": components["schemas"]["AuthTokenResponse"];
                 };
             };
-            /** @description ?���? ?��?�� (?��메일 ?��?�� 비�?번호 불일�?) */
+            /** @description 인증 실패 (이메일 또는 비밀번호 불일치) */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -682,7 +767,7 @@ export interface operations {
     getObservationSpots: {
         parameters: {
             query: {
-                /** @description �?측�? 조회 ?���? ?���? (?��?��, 경도, 반경) */
+                /** @description 관측지 조회 요청 정보 (위도, 경도, 반경) */
                 request: components["schemas"]["ObservationSpotRequest"];
             };
             header?: never;
@@ -691,7 +776,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 조회 ?���? */
+            /** @description 조회 성공 */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -700,7 +785,7 @@ export interface operations {
                     "*/*": components["schemas"]["ObservationSpotResponse"];
                 };
             };
-            /** @description ?��못된 ?���? (?��?��/경도 범위 초과, 반경 범위 초과 ?��) */
+            /** @description 잘못된 요청 (위도/경도 범위 초과, 반경 범위 초과 등) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -720,7 +805,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 조회 ?���? */
+            /** @description 조회 성공 */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -729,7 +814,7 @@ export interface operations {
                     "*/*": components["schemas"]["MemberInfoResponse"];
                 };
             };
-            /** @description ?���? ?��?�� (?��?��?�� ?��?��?���? ?��거나 만료?��) */
+            /** @description 인증 실패 (토큰이 유효하지 않거나 만료됨) */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -744,7 +829,7 @@ export interface operations {
         parameters: {
             query: {
                 /**
-                 * @description �?증할 ?��메일 주소
+                 * @description 검증할 이메일 주소
                  * @example user@example.com
                  */
                 email: string;
@@ -755,7 +840,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description �?�? ?���? */
+            /** @description 검증 완료 */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -764,7 +849,7 @@ export interface operations {
                     "*/*": components["schemas"]["MemberValidationResponse"];
                 };
             };
-            /** @description ?��못된 ?���? (?��메일 ?��?�� ?���? ?��) */
+            /** @description 잘못된 요청 (이메일 형식 오류 등) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -778,7 +863,7 @@ export interface operations {
     getForecast: {
         parameters: {
             query: {
-                /** @description �? �?�? ?���? ?���? ?���? (?��?��, 경도, ?���?, ?���? - ?��짜�? ?��간�? ?��?��?��?��) */
+                /** @description 별 관측 예보 요청 정보 (위도, 경도, 날짜, 시간 - 날짜와 시간은 선택사항) */
                 request: components["schemas"]["StargazingRequest"];
             };
             header?: never;
@@ -787,7 +872,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 조회 ?���? */
+            /** @description 조회 성공 */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -796,7 +881,7 @@ export interface operations {
                     "*/*": components["schemas"]["StargazingForecastResponse"];
                 };
             };
-            /** @description ?��못된 ?���? (?��?��/경도 범위 초과 ?��) */
+            /** @description 잘못된 요청 (위도/경도 범위 초과 등) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -805,7 +890,7 @@ export interface operations {
                     "*/*": components["schemas"]["StargazingForecastResponse"];
                 };
             };
-            /** @description ?���? ?���? (?���? API ?���? ?��?�� ?��) */
+            /** @description 서버 오류 (외부 API 호출 실패 등) */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -819,7 +904,7 @@ export interface operations {
     analyzeStargazingCondition: {
         parameters: {
             query: {
-                /** @description �? �?�? 조건 분석 ?���? ?���? (?��?��, 경도, ?���?, ?���?) */
+                /** @description 별 관측 조건 분석 요청 정보 (위도, 경도, 날짜, 시간) */
                 request: components["schemas"]["StargazingRequest"];
             };
             header?: never;
@@ -828,7 +913,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 분석 ?���? */
+            /** @description 분석 성공 */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -837,7 +922,7 @@ export interface operations {
                     "*/*": components["schemas"]["StargazingAnalyzeResponse"];
                 };
             };
-            /** @description ?��못된 ?���? (?��?��/경도 범위 초과, ?���?/?���? ?��?�� ?���? ?��) */
+            /** @description 잘못된 요청 (위도/경도 범위 초과, 날짜/시간 형식 오류 등) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -846,7 +931,7 @@ export interface operations {
                     "*/*": components["schemas"]["StargazingAnalyzeResponse"];
                 };
             };
-            /** @description ?���? ?���? (?���? API ?���? ?��?�� ?��) */
+            /** @description 서버 오류 (외부 API 호출 실패 등) */
             500: {
                 headers: {
                     [name: string]: unknown;

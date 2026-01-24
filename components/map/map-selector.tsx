@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Search, Loader2, Star, Car, ParkingCircle, UtensilsCrossed, MapPin, Crosshair, Sparkles, Maximize2, Minimize2 } from 'lucide-react'
+import { Search, Loader2, Star, Car, ParkingCircle, UtensilsCrossed, MapPin, Crosshair, Sparkles, Maximize2, Minimize2, Bookmark } from 'lucide-react'
 import { useMapProvider } from './map-provider'
 import type { PlaceSearchResult, MapPosition } from '@/lib/map/types'
 import type { StargazingSpot, CommonResponse } from '@/types/api'
@@ -14,12 +14,21 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import { 
   createSpotMarkerImageUrl, 
   getSpotMarkerImageSize, 
-  getSpotMarkerImageOffset 
+  getSpotMarkerImageOffset,
+  createBookmarkMarkerImageUrl,
+  getBookmarkMarkerImageSize,
+  getBookmarkMarkerImageOffset
 } from '@/lib/map/marker-icons'
+import { bookmarksApi } from '@/lib/api'
+import { bookmarkStore } from '@/lib/store/bookmarkStore'
+import { BookmarkModal } from './bookmark-modal'
+import { authStore } from '@/lib/store/authStore'
+import { useToast } from '@/hooks/use-toast'
 
 interface MapSelectorProps {
   lat: number
@@ -68,6 +77,17 @@ export default function MapSelector({
 
   // 지도 크기 토글 상태
   const [isMapExpanded, setIsMapExpanded] = useState(false)
+
+  // 북마크 관련 상태
+  const { bookmarks, setBookmarks, addBookmark, removeBookmark, isSpotBookmarked, getBookmarkBySpotId } = bookmarkStore()
+  const { isAuthenticated } = authStore()
+  const [isBookmarkVisible, setIsBookmarkVisible] = useState(true)
+  const [bookmarkMarkers, setBookmarkMarkers] = useState<Map<number, string>>(new Map()) // bookmarkId -> markerId
+  const [isBookmarkModalOpen, setIsBookmarkModalOpen] = useState(false)
+  const [bookmarkModalPosition, setBookmarkModalPosition] = useState<MapPosition | null>(null)
+  const [bookmarkModalAddress, setBookmarkModalAddress] = useState('')
+  const [isLoadingBookmarkAddress, setIsLoadingBookmarkAddress] = useState(false)
+  const { toast } = useToast()
 
   // 지도 초기화
   useEffect(() => {
@@ -170,6 +190,11 @@ export default function MapSelector({
           
           // 스팟 데이터 로드
           loadSpots()
+          
+          // 북마크 데이터 로드 (로그인한 경우)
+          if (isAuthenticated) {
+            loadBookmarks()
+          }
         })
         .catch((error) => {
           const errorMessage = error?.message || '지도 초기화 중 오류가 발생했습니다.'
@@ -246,6 +271,22 @@ export default function MapSelector({
     }
   }, [lat, lon])
 
+  // 북마크 데이터 로드
+  const loadBookmarks = useCallback(async () => {
+    if (!isAuthenticated) return
+    
+    try {
+      const bookmarkList = await bookmarksApi.getBookmarkList()
+      setBookmarks(bookmarkList)
+    } catch (error) {
+      console.error('북마크 데이터 로드 오류:', error)
+      // 인증 오류인 경우 북마크 리스트를 비움
+      if (error instanceof Error && error.message.includes('401')) {
+        setBookmarks([])
+      }
+    }
+  }, [isAuthenticated, setBookmarks])
+
   // 스팟 마커 표시
   useEffect(() => {
     if (!isInitialized || !mapProvider) return
@@ -289,13 +330,131 @@ export default function MapSelector({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInitialized, mapProvider, spots, isSpotVisible])
 
+  // 북마크 마커 표시
+  useEffect(() => {
+    if (!isInitialized || !mapProvider || !isAuthenticated) return
+
+    // 나만의 장소 표시가 꺼져있으면 CUSTOM 타입 마커만 제거
+    if (!isBookmarkVisible) {
+      const customBookmarks = bookmarks.filter((b) => b.type === 'CUSTOM')
+      customBookmarks.forEach((bookmark) => {
+        if (bookmark.bookmarkId) {
+          const markerId = bookmarkMarkers.get(bookmark.bookmarkId)
+          if (markerId) {
+            mapProvider.removeMarker(markerId)
+          }
+        }
+      })
+      // CUSTOM 타입만 제거하고 SPOT 타입은 유지
+      setBookmarkMarkers((prev) => {
+        const newMap = new Map(prev)
+        customBookmarks.forEach((bookmark) => {
+          if (bookmark.bookmarkId) {
+            newMap.delete(bookmark.bookmarkId)
+          }
+        })
+        return newMap
+      })
+      return
+    }
+
+    // 북마크 마커 이미지 생성
+    const bookmarkMarkerImageSrc = createBookmarkMarkerImageUrl()
+    const bookmarkMarkerImageSize = getBookmarkMarkerImageSize()
+    const bookmarkMarkerImageOffset = getBookmarkMarkerImageOffset()
+
+    // CUSTOM 타입 북마크만 마커로 표시 (SPOT 타입은 명소 마커와 중복되므로 제외)
+    const customBookmarks = bookmarks.filter((b) => b.type === 'CUSTOM' && b.latitude && b.longitude)
+    
+    // 기존 CUSTOM 북마크 마커 제거
+    const existingCustomMarkers = Array.from(bookmarkMarkers.entries())
+    existingCustomMarkers.forEach(([bookmarkId, markerId]) => {
+      const bookmark = bookmarks.find((b) => b.bookmarkId === bookmarkId)
+      if (!bookmark || bookmark.type === 'CUSTOM') {
+        mapProvider.removeMarker(markerId)
+      }
+    })
+
+    // 새로운 CUSTOM 북마크 마커 추가
+    const newBookmarkMarkers = new Map(bookmarkMarkers)
+    customBookmarks.forEach((bookmark) => {
+      if (!bookmark.bookmarkId || !bookmark.latitude || !bookmark.longitude) return
+      
+      // 이미 마커가 있으면 스킵
+      if (newBookmarkMarkers.has(bookmark.bookmarkId)) return
+
+      const markerId = mapProvider.addMarker(
+        { lat: bookmark.latitude, lng: bookmark.longitude },
+        {
+          type: 'bookmark',
+          data: bookmark,
+          image: {
+            src: bookmarkMarkerImageSrc,
+            size: bookmarkMarkerImageSize,
+            options: { offset: bookmarkMarkerImageOffset },
+          },
+          clickable: true,
+          zIndex: 1,
+        }
+      )
+      newBookmarkMarkers.set(bookmark.bookmarkId, markerId)
+    })
+
+    setBookmarkMarkers(newBookmarkMarkers)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isInitialized, mapProvider, bookmarks, isBookmarkVisible, isAuthenticated])
+
+  // 인증 상태 변경 시 북마크 로드
+  useEffect(() => {
+    if (isAuthenticated && isInitialized) {
+      loadBookmarks()
+    } else if (!isAuthenticated) {
+      // 로그아웃 시 북마크 리스트 초기화
+      setBookmarks([])
+      // 북마크 마커 제거
+      if (mapProvider) {
+        bookmarkMarkers.forEach((markerId) => {
+          mapProvider.removeMarker(markerId)
+        })
+        setBookmarkMarkers(new Map())
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, isInitialized])
+
   // 마커 클릭 이벤트 핸들러 설정 (기존 핸들러 보존)
   useEffect(() => {
     if (!isInitialized || !mapProvider) return
 
     // 스팟이 변경될 때마다 마커 클릭 핸들러 업데이트
     mapProvider.setEventHandlers({
-      onMarkerClick: (markerId: string, data?: any) => {
+      onMarkerClick: async (markerId: string, data?: any) => {
+        // 사용자 지정 마커 클릭 시 북마크 추가 모달 표시
+        if (markerId.startsWith('user_marker_') || (data && data.type === 'user')) {
+          if (isAuthenticated) {
+            // 마커 위치 가져오기 - 현재 사용자 마커 위치 사용
+            const currentPosition = { lat, lng: lon }
+            
+            setIsLoadingBookmarkAddress(true)
+            try {
+              const address = await mapProvider.getAddressFromPosition(currentPosition)
+              setBookmarkModalPosition(currentPosition)
+              setBookmarkModalAddress(address)
+              setIsBookmarkModalOpen(true)
+            } catch (error) {
+              console.error('주소 변환 오류:', error)
+              toast({
+                title: '오류',
+                description: '주소를 가져오는 중 오류가 발생했습니다.',
+                variant: 'destructive',
+              })
+            } finally {
+              setIsLoadingBookmarkAddress(false)
+            }
+          }
+          return
+        }
+        
         if (data && typeof data.id === 'number') {
           const spot = spots.find((s) => s.id === data.id)
           if (spot) {
@@ -305,10 +464,19 @@ export default function MapSelector({
             setSelectedSpot(spot)
             setOpenSpotId(spot.id)
           }
+        } else if (data && data.bookmarkId) {
+          // 북마크 마커 클릭 시 처리 (필요한 경우)
+          const bookmark = bookmarks.find((b) => b.bookmarkId === data.bookmarkId)
+          if (bookmark) {
+            // 북마크 위치로 이동
+            if (bookmark.latitude && bookmark.longitude) {
+              mapProvider.setCenter({ lat: bookmark.latitude, lng: bookmark.longitude }, true)
+            }
+          }
         }
       },
     })
-  }, [isInitialized, mapProvider, spots])
+  }, [isInitialized, mapProvider, spots, bookmarks, isAuthenticated, toast])
 
   // 현재 위치로 이동
   const moveToCurrentLocation = useCallback(async () => {
@@ -577,6 +745,37 @@ export default function MapSelector({
             )}
           </div>
         )}
+        {/* 필터링 토글 버튼 */}
+        {isInitialized && (
+          <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
+            <div className="bg-card/95 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-border/50">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="spot-filter"
+                    checked={isSpotVisible}
+                    onCheckedChange={setIsSpotVisible}
+                  />
+                  <Label htmlFor="spot-filter" className="text-sm font-medium cursor-pointer">
+                    명소 보기
+                  </Label>
+                </div>
+                {isAuthenticated && (
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="bookmark-filter"
+                      checked={isBookmarkVisible}
+                      onCheckedChange={setIsBookmarkVisible}
+                    />
+                    <Label htmlFor="bookmark-filter" className="text-sm font-medium cursor-pointer">
+                      나만의 장소 보기
+                    </Label>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
         {/* 명소 찾기 및 현재 위치로 이동 버튼 */}
         {isInitialized && (
           <div className="absolute bottom-4 right-4 z-20 flex flex-col gap-2">
@@ -766,9 +965,85 @@ export default function MapSelector({
                     </Badge>
                   )}
                 </div>
+                {isAuthenticated && (
+                  <Button
+                    variant={isSpotBookmarked(selectedSpot.id) ? "default" : "outline"}
+                    className="w-full"
+                    onClick={async () => {
+                      if (!isAuthenticated) {
+                        toast({
+                          title: '로그인 필요',
+                          description: '북마크 기능을 사용하려면 로그인이 필요합니다.',
+                          variant: 'destructive',
+                        })
+                        return
+                      }
+
+                      const existingBookmark = getBookmarkBySpotId(selectedSpot.id)
+                      
+                      if (existingBookmark && existingBookmark.bookmarkId) {
+                        // 북마크 삭제
+                        try {
+                          await bookmarksApi.deleteBookmark(existingBookmark.bookmarkId)
+                          removeBookmark(existingBookmark.bookmarkId)
+                          
+                          // 북마크 마커 제거
+                          const markerId = bookmarkMarkers.get(existingBookmark.bookmarkId)
+                          if (markerId && mapProvider) {
+                            mapProvider.removeMarker(markerId)
+                            setBookmarkMarkers((prev) => {
+                              const newMap = new Map(prev)
+                              newMap.delete(existingBookmark.bookmarkId!)
+                              return newMap
+                            })
+                          }
+                          
+                          toast({
+                            title: '성공',
+                            description: '북마크가 삭제되었습니다.',
+                          })
+                        } catch (error) {
+                          console.error('북마크 삭제 오류:', error)
+                          toast({
+                            title: '오류',
+                            description: '북마크 삭제에 실패했습니다.',
+                            variant: 'destructive',
+                          })
+                        }
+                      } else {
+                        // 북마크 추가
+                        try {
+                          const response = await bookmarksApi.addBookmark({
+                            type: 'SPOT',
+                            spotId: selectedSpot.id,
+                            name: selectedSpot.title,
+                            latitude: selectedSpot.latitude,
+                            longitude: selectedSpot.longitude,
+                            address: selectedSpot.address,
+                          })
+                          addBookmark(response)
+                          toast({
+                            title: '성공',
+                            description: '북마크가 추가되었습니다.',
+                          })
+                        } catch (error) {
+                          console.error('북마크 추가 오류:', error)
+                          toast({
+                            title: '오류',
+                            description: '북마크 추가에 실패했습니다.',
+                            variant: 'destructive',
+                          })
+                        }
+                      }
+                    }}
+                  >
+                    <Star className={cn("w-4 h-4 mr-2", isSpotBookmarked(selectedSpot.id) && "fill-current")} />
+                    {isSpotBookmarked(selectedSpot.id) ? '북마크됨' : '북마크 추가'}
+                  </Button>
+                )}
                 <Button
                   variant="default"
-                  className="w-full mt-2"
+                  className="w-full"
                   onClick={async () => {
                     if (selectedSpot) {
                       // 좌표 업데이트
@@ -805,6 +1080,17 @@ export default function MapSelector({
             </Card>
           </div>
         )}
+        {/* 북마크 추가 모달 */}
+        <BookmarkModal
+          open={isBookmarkModalOpen}
+          onOpenChange={setIsBookmarkModalOpen}
+          position={bookmarkModalPosition}
+          address={bookmarkModalAddress}
+          onSave={() => {
+            // 북마크 리스트 새로고침
+            loadBookmarks()
+          }}
+        />
       </div>
     </div>
   )

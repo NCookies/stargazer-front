@@ -232,6 +232,13 @@ export class KakaoMapProvider implements IMapProvider {
     this.markers.set(markerId, { marker, type: 'user' })
     this.userMarkerId = markerId
 
+    // 클릭 이벤트 핸들러
+    if (this.eventHandlers.onMarkerClick) {
+      window.kakao.maps.event.addListener(marker, 'click', () => {
+        this.eventHandlers.onMarkerClick?.(markerId, { type: 'user' })
+      })
+    }
+
     // 드래그 이벤트 핸들러
     if (this.eventHandlers.onMarkerDrag) {
       window.kakao.maps.event.addListener(marker, 'dragend', () => {

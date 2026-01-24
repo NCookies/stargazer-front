@@ -104,6 +104,39 @@
   - LocalTime 파라미터를 문자열로 변환하는 로직 포함
   - 에러 처리 포함
 
+## 북마크 API (`lib/api/bookmarks.ts`)
+
+### GET /api/v1/bookmarks
+- **함수명**: `bookmarksApi.getBookmarkList(): Promise<Array<BookmarkResponse>>`
+- **설명**: 현재 로그인한 사용자의 북마크 리스트 조회
+- **파라미터**: 없음
+- **반환값**: 북마크 목록 (배열)
+- **인증**: 필요 (JWT Bearer Token)
+- **특이사항**:
+  - 응답이 배열이 아닌 경우 자동으로 배열로 변환
+  - 에러 처리 포함
+
+### POST /api/v1/bookmarks
+- **함수명**: `bookmarksApi.addBookmark(data): Promise<BookmarkResponse>`
+- **설명**: 새로운 북마크 추가 (SPOT 타입 또는 CUSTOM 타입)
+- **파라미터**: 
+  - `{ type: 'SPOT' | 'CUSTOM', spotId?: number, name: string, latitude?: number, longitude?: number, address?: string }`
+- **반환값**: 추가된 북마크 정보
+- **인증**: 필요 (JWT Bearer Token)
+- **특이사항**:
+  - SPOT 타입: 명소를 북마크로 추가
+  - CUSTOM 타입: 사용자가 직접 추가한 나만의 장소
+  - 에러 처리 포함
+
+### DELETE /api/v1/bookmarks/{bookmarkId}
+- **함수명**: `bookmarksApi.deleteBookmark(bookmarkId: number): Promise<void>`
+- **설명**: 북마크 삭제
+- **파라미터**: `bookmarkId` (경로 파라미터)
+- **반환값**: void
+- **인증**: 필요 (JWT Bearer Token)
+- **특이사항**:
+  - 에러 처리 포함
+
 ## 파일 구조
 
 ```
@@ -113,8 +146,13 @@ lib/api/
 ├── members.ts         # 회원 API (2개 엔드포인트)
 ├── spots.ts           # 관측지 API (1개 엔드포인트)
 ├── stargazing.ts      # 별 관측 API (2개 엔드포인트)
+├── bookmarks.ts       # 북마크 API (3개 엔드포인트)
 ├── index.ts           # 통합 export
 └── axios.ts           # Axios 인스턴스 및 인터셉터
+
+lib/store/
+├── authStore.ts       # 인증 상태 관리 (Zustand)
+└── bookmarkStore.ts   # 북마크 상태 관리 (Zustand)
 
 types/
 └── openapi.d.ts       # OpenAPI에서 생성된 타입 정의
@@ -126,7 +164,8 @@ types/
 - **회원 API**: 2개
 - **관측지 API**: 1개
 - **별 관측 API**: 2개
-- **총계**: 9개 엔드포인트
+- **북마크 API**: 3개
+- **총계**: 12개 엔드포인트
 
 ## 업데이트 가이드
 

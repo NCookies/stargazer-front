@@ -9,6 +9,7 @@ export { authApi } from './auth';
 export { membersApi } from './members';
 export { spotsApi } from './spots';
 export { stargazingApi } from './stargazing';
+export { bookmarksApi } from './bookmarks';
 export { apiClient } from './axios';
 
 // 타입 export
