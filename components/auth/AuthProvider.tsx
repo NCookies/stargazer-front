@@ -1,12 +1,17 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, createContext, useContext } from 'react'
 import { authStore } from '@/lib/store/authStore'
 import { authApi } from '@/lib/api/authApi'
 
 interface AuthProviderProps {
   children: React.ReactNode
 }
+
+// 초기화 상태를 공유하기 위한 Context
+const AuthInitContext = createContext<{ isInitializing: boolean }>({ isInitializing: true })
+
+export const useAuthInit = () => useContext(AuthInitContext)
 
 /**
  * 앱 초기 로딩 시 토큰 갱신을 시도하는 Provider
@@ -37,6 +42,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // 실패 시 로그아웃 처리 (토큰이 만료되었거나 유효하지 않음)
           authStore.getState().logout()
         }
+      } else {
+        // Access Token이 없으면 확실히 로그아웃 상태로 설정
+        authStore.getState().logout()
       }
       setIsInitializing(false)
     }
@@ -44,6 +52,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     initializeAuth()
   }, []) // 최초 마운트 시에만 실행
 
-  // 초기화 중에는 로딩 표시하지 않음 (빠른 전환을 위해)
-  return <>{children}</>
+  return (
+    <AuthInitContext.Provider value={{ isInitializing }}>
+      {children}
+    </AuthInitContext.Provider>
+  )
 }

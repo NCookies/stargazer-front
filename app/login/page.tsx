@@ -17,6 +17,7 @@ import { authApi } from '@/lib/api/auth'
 import { membersApi } from '@/lib/api/members'
 import { Header } from '@/components/header'
 import { useToast } from '@/hooks/use-toast'
+import { useAuthInit } from '@/components/auth/AuthProvider'
 import { Mail, Lock, User, Loader2, CheckCircle2 } from 'lucide-react'
 import type { AxiosError } from 'axios'
 
@@ -48,6 +49,7 @@ type RegisterFormData = z.infer<typeof registerSchema>
 export default function LoginPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const { isInitializing } = useAuthInit()
   const isAuthenticated = authStore((state) => state.isAuthenticated)
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login')
   const [isLoading, setIsLoading] = useState(false)
@@ -73,11 +75,18 @@ export default function LoginPage() {
   })
 
   useEffect(() => {
+    // 초기화가 완료된 후에만 리디렉션 체크
+    if (isInitializing) {
+      return
+    }
+    
     // 이미 로그인된 경우 메인 페이지로 리다이렉트
-    if (isAuthenticated) {
+    // 단, user 정보가 있어야 확실히 로그인된 상태로 간주
+    const user = authStore.getState().user
+    if (isAuthenticated && user) {
       router.push('/')
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, isInitializing, router])
 
   // 로그인 처리
   const onLoginSubmit = async (data: LoginFormData) => {
