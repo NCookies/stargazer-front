@@ -87,3 +87,61 @@ export function getSpotMarkerImageSize(config?: Partial<SpotMarkerIconConfig>): 
 export function getSpotMarkerImageOffset(config?: Partial<SpotMarkerIconConfig>): { x: number; y: number } {
   return config?.offset ?? SPOT_MARKER_CONFIG.offset
 }
+
+/**
+ * 북마크 마커 아이콘 설정 (별 모양)
+ */
+export const BOOKMARK_MARKER_CONFIG: SpotMarkerIconConfig = {
+  backgroundColor: '#3b82f6', // 파란색 배경
+  borderColor: '#fff', // 흰색 테두리
+  borderWidth: 1.5,
+  iconColor: '#fff', // 흰색 아이콘
+  size: 30,
+  offset: { x: 15, y: 15 },
+}
+
+/**
+ * 북마크 마커 아이콘 SVG 생성 (별 모양)
+ */
+function createBookmarkIconSVG(config: SpotMarkerIconConfig): string {
+  const { backgroundColor, borderColor, borderWidth, iconColor, size } = config
+  const center = size / 2
+  const radius = center - borderWidth
+
+  // 별 모양 아이콘 (lucide-react Star 아이콘과 유사한 형태)
+  const svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="${center}" cy="${center}" r="${radius}" fill="${backgroundColor}" stroke="${borderColor}" stroke-width="${borderWidth}"/>
+    <!-- 별 모양 -->
+    <path d="M${center} ${center - 6} L${center + 2.5} ${center - 1.5} L${center + 6.5} ${center - 1} L${center + 3.5} ${center + 2} L${center + 4} ${center + 6} L${center} ${center + 3.5} L${center - 4} ${center + 6} L${center - 3.5} ${center + 2} L${center - 6.5} ${center - 1} L${center - 2.5} ${center - 1.5} Z" fill="${iconColor}"/>
+  </svg>`.trim()
+
+  return svg
+}
+
+/**
+ * 북마크 마커 이미지 URL 생성
+ */
+export function createBookmarkMarkerImageUrl(config?: Partial<SpotMarkerIconConfig>): string {
+  const mergedConfig: SpotMarkerIconConfig = {
+    ...BOOKMARK_MARKER_CONFIG,
+    ...config,
+  }
+
+  const svg = createBookmarkIconSVG(mergedConfig)
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)
+}
+
+/**
+ * 북마크 마커 이미지 크기 반환
+ */
+export function getBookmarkMarkerImageSize(config?: Partial<SpotMarkerIconConfig>): { width: number; height: number } {
+  const size = config?.size ?? BOOKMARK_MARKER_CONFIG.size
+  return { width: size, height: size }
+}
+
+/**
+ * 북마크 마커 이미지 오프셋 반환
+ */
+export function getBookmarkMarkerImageOffset(config?: Partial<SpotMarkerIconConfig>): { x: number; y: number } {
+  return config?.offset ?? BOOKMARK_MARKER_CONFIG.offset
+}

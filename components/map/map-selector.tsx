@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Search, Loader2, Star, Car, ParkingCircle, UtensilsCrossed, MapPin, Crosshair, Sparkles, Maximize2, Minimize2 } from 'lucide-react'
+import { Search, Loader2, Star, Car, ParkingCircle, UtensilsCrossed, MapPin, Crosshair, Sparkles, Maximize2, Minimize2, Bookmark, Filter } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useMapProvider } from './map-provider'
 import type { PlaceSearchResult, MapPosition } from '@/lib/map/types'
 import type { StargazingSpot, CommonResponse } from '@/types/api'
@@ -14,12 +15,22 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import { 
   createSpotMarkerImageUrl, 
   getSpotMarkerImageSize, 
-  getSpotMarkerImageOffset 
+  getSpotMarkerImageOffset,
+  createBookmarkMarkerImageUrl,
+  getBookmarkMarkerImageSize,
+  getBookmarkMarkerImageOffset
 } from '@/lib/map/marker-icons'
+import { bookmarksApi } from '@/lib/api'
+import { bookmarkStore } from '@/lib/store/bookmarkStore'
+import { BookmarkModal } from './bookmark-modal'
+import { SpotDetailModal } from './spot-detail-modal'
+import { authStore } from '@/lib/store/authStore'
+import { useToast } from '@/hooks/use-toast'
 
 interface MapSelectorProps {
   lat: number
@@ -55,7 +66,9 @@ export default function MapSelector({
   const [isLoadingSpots, setIsLoadingSpots] = useState(false)
   const [spotMarkers, setSpotMarkers] = useState<Map<number, string>>(new Map()) // spotId -> markerId
   const [selectedSpot, setSelectedSpot] = useState<StargazingSpot | null>(null)
+  const [selectedBookmark, setSelectedBookmark] = useState<any | null>(null)
   const [openSpotId, setOpenSpotId] = useState<number | null>(null)
+  const [openBookmarkId, setOpenBookmarkId] = useState<number | null>(null)
 
   // 현재 위치 관련 상태
   const [isGettingLocation, setIsGettingLocation] = useState(false)
@@ -68,6 +81,17 @@ export default function MapSelector({
 
   // 지도 크기 토글 상태
   const [isMapExpanded, setIsMapExpanded] = useState(false)
+
+  // 북마크 관련 상태
+  const { bookmarks, setBookmarks, addBookmark, removeBookmark, isSpotBookmarked, getBookmarkBySpotId } = bookmarkStore()
+  const { isAuthenticated } = authStore()
+  const [isBookmarkVisible, setIsBookmarkVisible] = useState(true)
+  const [bookmarkMarkers, setBookmarkMarkers] = useState<Map<number, string>>(new Map()) // bookmarkId -> markerId
+  const [isBookmarkModalOpen, setIsBookmarkModalOpen] = useState(false)
+  const [bookmarkModalPosition, setBookmarkModalPosition] = useState<MapPosition | null>(null)
+  const [bookmarkModalAddress, setBookmarkModalAddress] = useState('')
+  const [isLoadingBookmarkAddress, setIsLoadingBookmarkAddress] = useState(false)
+  const { toast } = useToast()
 
   // 지도 초기화
   useEffect(() => {
@@ -139,6 +163,9 @@ export default function MapSelector({
               // 스팟 정보 닫기
               setSelectedSpot(null)
               setOpenSpotId(null)
+              // 북마크 모달도 닫기
+              setSelectedBookmark(null)
+              setOpenBookmarkId(null)
             },
             onMapRightClick: async (position) => {
               console.log('[MapSelector] 지도 우클릭 이벤트:', position)
@@ -161,6 +188,19 @@ export default function MapSelector({
               const address = await mapProvider.getAddressFromPosition(position)
               setLocationName?.(address)
             },
+            onMarkerDrag: (position) => {
+              console.log('[MapSelector] 마커 드래그 이벤트:', position)
+              // 마커 드래그 시 좌표 업데이트
+              setLat(position.lat)
+              setLon(position.lng)
+              
+              // 주소 변환 (비동기로 처리)
+              mapProvider.getAddressFromPosition(position).then((address) => {
+                setLocationName?.(address)
+              }).catch((error) => {
+                console.error('주소 변환 오류:', error)
+              })
+            },
           })
 
           // 초기 마커 추가
@@ -170,6 +210,11 @@ export default function MapSelector({
           
           // 스팟 데이터 로드
           loadSpots()
+          
+          // 북마크 데이터 로드 (로그인한 경우)
+          if (isAuthenticated) {
+            loadBookmarks()
+          }
         })
         .catch((error) => {
           const errorMessage = error?.message || '지도 초기화 중 오류가 발생했습니다.'
@@ -246,12 +291,80 @@ export default function MapSelector({
     }
   }, [lat, lon])
 
+  // 북마크 데이터 로드
+  const loadBookmarks = useCallback(async () => {
+    if (!isAuthenticated) return
+    
+    try {
+      const bookmarkList = await bookmarksApi.getBookmarkList()
+      
+      // 중복 데이터 필터링 (좌표값이 완전히 동일한 경우)
+      const seenCoordinates = new Map<string, number>()
+      const filteredBookmarks: typeof bookmarkList = []
+      const duplicateIds: number[] = []
+      
+      bookmarkList.forEach((bookmark) => {
+        if (!bookmark.latitude || !bookmark.longitude) {
+          // 좌표가 없는 경우는 그대로 추가
+          filteredBookmarks.push(bookmark)
+          return
+        }
+        
+        // 좌표를 키로 사용 (부동소수점 오차 고려하여 반올림)
+        const coordKey = `${Math.round(bookmark.latitude * 1000000)}_${Math.round(bookmark.longitude * 1000000)}`
+        
+        if (seenCoordinates.has(coordKey)) {
+          // 중복 발견: 첫 번째 것만 유지하고 나머지는 제거
+          const firstIndex = seenCoordinates.get(coordKey)!
+          const firstBookmark = filteredBookmarks[firstIndex]
+          
+          duplicateIds.push(bookmark.bookmarkId || 0)
+          console.warn(
+            `[북마크 중복 데이터 감지] 서버에서 중복된 좌표의 북마크가 발견되었습니다.`,
+            {
+              유지되는_북마크: {
+                id: firstBookmark.bookmarkId,
+                name: firstBookmark.name,
+                좌표: `${firstBookmark.latitude}, ${firstBookmark.longitude}`,
+              },
+              제거된_북마크: {
+                id: bookmark.bookmarkId,
+                name: bookmark.name,
+                좌표: `${bookmark.latitude}, ${bookmark.longitude}`,
+              },
+            }
+          )
+        } else {
+          // 처음 보는 좌표: 추가하고 인덱스 저장
+          seenCoordinates.set(coordKey, filteredBookmarks.length)
+          filteredBookmarks.push(bookmark)
+        }
+      })
+      
+      // 중복이 발견된 경우 로그 출력
+      if (duplicateIds.length > 0) {
+        console.warn(
+          `[북마크 중복 데이터 필터링 완료] 총 ${duplicateIds.length}개의 중복 북마크가 제거되었습니다.`,
+          { 제거된_북마크_IDs: duplicateIds }
+        )
+      }
+      
+      setBookmarks(filteredBookmarks)
+    } catch (error) {
+      console.error('북마크 데이터 로드 오류:', error)
+      // 인증 오류인 경우 북마크 리스트를 비움
+      if (error instanceof Error && error.message.includes('401')) {
+        setBookmarks([])
+      }
+    }
+  }, [isAuthenticated, setBookmarks])
+
   // 스팟 마커 표시
   useEffect(() => {
     if (!isInitialized || !mapProvider) return
 
-    // 명소 표시가 꺼져있으면 마커 제거
-    if (!isSpotVisible || spots.length === 0) {
+    // 명소가 없으면 마커 제거
+    if (spots.length === 0) {
       mapProvider.clearMarkersByType?.('spot')
       setSpotMarkers(new Map())
       return
@@ -265,21 +378,38 @@ export default function MapSelector({
     const markerImageSize = getSpotMarkerImageSize()
     const markerImageOffset = getSpotMarkerImageOffset()
 
-    // 각 스팟에 마커 추가
+    // 각 스팟에 마커 추가 (북마크된 명소는 다른 색상)
     const newSpotMarkers = new Map<number, string>()
     spots.forEach((spot) => {
+      // 북마크된 명소인지 확인
+      const isBookmarkedSpot = isSpotBookmarked(spot.id)
+      
+      // 표시 조건:
+      // - 일반 명소: isSpotVisible이 true일 때만 표시
+      // - 북마크된 명소: isSpotVisible이 true이거나 isBookmarkVisible이 true일 때 표시
+      const shouldShowSpot = isSpotVisible || (isBookmarkedSpot && isBookmarkVisible && isAuthenticated)
+      
+      if (!shouldShowSpot) {
+        return // 이 명소는 표시하지 않음
+      }
+      
+      // 북마크된 명소는 다른 색상의 마커 사용
+      const markerImageSrc = isBookmarkedSpot
+        ? createSpotMarkerImageUrl({ backgroundColor: '#3b82f6' }) // 파란색 (북마크된 명소)
+        : spotMarkerImageSrc // 주황색 (일반 명소)
+      
       const markerId = mapProvider.addMarker(
         { lat: spot.latitude, lng: spot.longitude },
         {
           type: 'spot',
           data: spot,
           image: {
-            src: spotMarkerImageSrc,
+            src: markerImageSrc,
             size: markerImageSize,
             options: { offset: markerImageOffset },
           },
           clickable: true,
-          zIndex: 1, // 사용자 마커보다 낮은 z-index
+          zIndex: isBookmarkedSpot ? 2 : 1, // 북마크된 명소는 더 높은 z-index
         }
       )
       newSpotMarkers.set(spot.id, markerId)
@@ -287,7 +417,127 @@ export default function MapSelector({
 
     setSpotMarkers(newSpotMarkers)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isInitialized, mapProvider, spots, isSpotVisible])
+  }, [isInitialized, mapProvider, spots, isSpotVisible, isBookmarkVisible, isAuthenticated, bookmarks]) // isBookmarkVisible과 isAuthenticated도 watch
+
+  // 북마크 마커 표시
+  useEffect(() => {
+    if (!isInitialized || !mapProvider || !isAuthenticated) return
+
+    // 나만의 장소 표시가 꺼져있으면 CUSTOM 타입 마커만 제거
+    if (!isBookmarkVisible) {
+      const customBookmarks = bookmarks.filter((b) => b.type === 'CUSTOM')
+      customBookmarks.forEach((bookmark) => {
+        if (bookmark.bookmarkId) {
+          const markerId = bookmarkMarkers.get(bookmark.bookmarkId)
+          if (markerId) {
+            mapProvider.removeMarker(markerId)
+          }
+        }
+      })
+      // CUSTOM 타입만 제거하고 SPOT 타입은 유지
+      setBookmarkMarkers((prev) => {
+        const newMap = new Map(prev)
+        customBookmarks.forEach((bookmark) => {
+          if (bookmark.bookmarkId) {
+            newMap.delete(bookmark.bookmarkId)
+          }
+        })
+        return newMap
+      })
+      return
+    }
+
+    // 북마크 마커 이미지 생성
+    const bookmarkMarkerImageSrc = createBookmarkMarkerImageUrl()
+    const bookmarkMarkerImageSize = getBookmarkMarkerImageSize()
+    const bookmarkMarkerImageOffset = getBookmarkMarkerImageOffset()
+
+    // CUSTOM 타입 북마크만 마커로 표시 (SPOT 타입은 명소 마커와 중복되므로 제외)
+    const customBookmarks = bookmarks.filter((b) => b.type === 'CUSTOM' && b.latitude && b.longitude)
+    
+    // 현재 마커에 없는 북마크만 찾기 (추가할 북마크)
+    const bookmarksToAdd = customBookmarks.filter((bookmark) => {
+      if (!bookmark.bookmarkId) return false
+      return !bookmarkMarkers.has(bookmark.bookmarkId)
+    })
+
+    // 현재 북마크 리스트에 없는 마커 찾기 (제거할 마커)
+    // CUSTOM 타입 북마크만 마커로 표시하므로, CUSTOM 타입이 아니거나 북마크 리스트에 없으면 제거
+    const markersToRemove: number[] = []
+    bookmarkMarkers.forEach((markerId, bookmarkId) => {
+      const bookmark = bookmarks.find((b) => b.bookmarkId === bookmarkId)
+      // 북마크가 없거나, CUSTOM 타입이 아니면 제거
+      if (!bookmark || bookmark.type !== 'CUSTOM') {
+        markersToRemove.push(bookmarkId)
+      }
+    })
+
+    // 제거할 마커 삭제
+    const newBookmarkMarkers = new Map(bookmarkMarkers)
+    markersToRemove.forEach((bookmarkId) => {
+      const markerId = newBookmarkMarkers.get(bookmarkId)
+      if (markerId) {
+        mapProvider.removeMarker(markerId)
+        newBookmarkMarkers.delete(bookmarkId)
+      }
+    })
+
+    // 추가할 북마크 마커 생성
+    bookmarksToAdd.forEach((bookmark) => {
+      if (!bookmark.bookmarkId || !bookmark.latitude || !bookmark.longitude) return
+
+      const markerId = mapProvider.addMarker(
+        { lat: bookmark.latitude, lng: bookmark.longitude },
+        {
+          type: 'bookmark',
+          data: bookmark,
+          image: {
+            src: bookmarkMarkerImageSrc,
+            size: bookmarkMarkerImageSize,
+            options: { offset: bookmarkMarkerImageOffset },
+          },
+          clickable: true,
+          zIndex: 1,
+        }
+      )
+      newBookmarkMarkers.set(bookmark.bookmarkId, markerId)
+    })
+
+    setBookmarkMarkers(newBookmarkMarkers)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isInitialized, mapProvider, bookmarks, isBookmarkVisible, isAuthenticated])
+
+  // 인증 상태 변경 시 북마크 로드
+  useEffect(() => {
+    if (isAuthenticated && isInitialized) {
+      loadBookmarks()
+    } else if (!isAuthenticated) {
+      // 로그아웃 시 북마크 리스트 초기화
+      setBookmarks([])
+      // 북마크 마커 제거
+      if (mapProvider) {
+        bookmarkMarkers.forEach((markerId) => {
+          mapProvider.removeMarker(markerId)
+        })
+        setBookmarkMarkers(new Map())
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, isInitialized])
+
+  // 선택된 북마크가 업데이트되면 selectedBookmark도 업데이트
+  useEffect(() => {
+    if (selectedBookmark && selectedBookmark.bookmarkId) {
+      const updatedBookmark = bookmarks.find(
+        (b) => b.bookmarkId === selectedBookmark.bookmarkId
+      )
+      if (updatedBookmark) {
+        // 북마크가 업데이트되었으면 selectedBookmark도 업데이트
+        setSelectedBookmark(updatedBookmark)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookmarks])
 
   // 마커 클릭 이벤트 핸들러 설정 (기존 핸들러 보존)
   useEffect(() => {
@@ -295,7 +545,39 @@ export default function MapSelector({
 
     // 스팟이 변경될 때마다 마커 클릭 핸들러 업데이트
     mapProvider.setEventHandlers({
-      onMarkerClick: (markerId: string, data?: any) => {
+      onMarkerClick: async (markerId: string, data?: any, position?: MapPosition) => {
+        // 사용자 지정 마커 클릭 시 북마크 추가 모달 표시
+        if (markerId.startsWith('user_marker_') || (data && data.type === 'user')) {
+          if (isAuthenticated) {
+            // 마커의 실제 위치 사용 (드래그된 경우를 위해)
+            const currentPosition = position || { lat, lng: lon }
+            
+            // 마커 위치를 state에도 업데이트 (동기화)
+            if (position) {
+              setLat(position.lat)
+              setLon(position.lng)
+            }
+            
+            setIsLoadingBookmarkAddress(true)
+            try {
+              const address = await mapProvider.getAddressFromPosition(currentPosition)
+              setBookmarkModalPosition(currentPosition)
+              setBookmarkModalAddress(address)
+              setIsBookmarkModalOpen(true)
+            } catch (error) {
+              console.error('주소 변환 오류:', error)
+              toast({
+                title: '오류',
+                description: '주소를 가져오는 중 오류가 발생했습니다.',
+                variant: 'destructive',
+              })
+            } finally {
+              setIsLoadingBookmarkAddress(false)
+            }
+          }
+          return
+        }
+        
         if (data && typeof data.id === 'number') {
           const spot = spots.find((s) => s.id === data.id)
           if (spot) {
@@ -304,11 +586,29 @@ export default function MapSelector({
             // 스팟 정보 표시
             setSelectedSpot(spot)
             setOpenSpotId(spot.id)
+            // 북마크 모달 닫기
+            setSelectedBookmark(null)
+            setOpenBookmarkId(null)
+          }
+        } else if (data && data.bookmarkId) {
+          // 북마크 마커 클릭 시 통합 모달 표시
+          const bookmark = bookmarks.find((b) => b.bookmarkId === data.bookmarkId)
+          if (bookmark) {
+            // 북마크 위치로 이동
+            if (bookmark.latitude && bookmark.longitude) {
+              mapProvider.setCenter({ lat: bookmark.latitude, lng: bookmark.longitude }, true)
+            }
+            // 북마크 정보 표시
+            setSelectedBookmark(bookmark)
+            setOpenBookmarkId(bookmark.bookmarkId || null)
+            // 명소 모달 닫기
+            setSelectedSpot(null)
+            setOpenSpotId(null)
           }
         }
       },
     })
-  }, [isInitialized, mapProvider, spots])
+  }, [isInitialized, mapProvider, spots, bookmarks, isAuthenticated, toast])
 
   // 현재 위치로 이동
   const moveToCurrentLocation = useCallback(async () => {
@@ -530,6 +830,61 @@ export default function MapSelector({
         )}
       </form>
 
+      {/* 필터링 토글 버튼 - 별도 줄 */}
+      {isInitialized && (
+        <TooltipProvider>
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="bg-card/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-border/50">
+              <div className="flex flex-wrap gap-3 items-center">
+                {/* 필터 제목 */}
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Filter className="h-4 w-4" />
+                  <span>표시 옵션</span>
+                </div>
+                <div className="h-4 w-px bg-border" />
+                {/* 필터 버튼들 */}
+                <div className="flex flex-wrap gap-2 items-center">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={isSpotVisible ? "default" : "outline"}
+                        size="icon"
+                        className="h-9 w-9"
+                        onClick={() => setIsSpotVisible(!isSpotVisible)}
+                        aria-label="명소 보기"
+                      >
+                        <Sparkles className={cn("h-4 w-4", isSpotVisible && "text-primary-foreground")} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>명소 보기</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  {isAuthenticated && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant={isBookmarkVisible ? "default" : "outline"}
+                          size="icon"
+                          className="h-9 w-9"
+                          onClick={() => setIsBookmarkVisible(!isBookmarkVisible)}
+                          aria-label="나만의 장소 보기"
+                        >
+                          <Star className={cn("h-4 w-4", isBookmarkVisible && "text-primary-foreground")} />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>나만의 장소 보기</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </TooltipProvider>
+      )}
+
       {/* 지도 */}
       <div className={`w-full rounded-lg overflow-hidden border border-gray-700 relative z-0 transition-all duration-300 ${isMapExpanded ? 'h-[600px]' : 'h-96'}`}>
         {/* 지도 크기 토글 버튼 */}
@@ -713,98 +1068,67 @@ export default function MapSelector({
             </Button>
           </div>
         )}
-        {/* 스팟 마커 클릭 시 표시되는 상세 정보 카드 */}
+        {/* 명소/북마크 통합 상세 모달 */}
         {selectedSpot && openSpotId === selectedSpot.id && (
-          <div className="absolute top-4 right-4 z-20 max-w-sm w-full">
-            <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
-              <CardHeader>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Star className="w-5 h-5 text-primary" />
-                      {selectedSpot.title}
-                    </CardTitle>
-                    <CardDescription className="mt-1 text-xs">
-                      {selectedSpot.address}
-                    </CardDescription>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0"
-                    onClick={() => {
-                      setSelectedSpot(null)
-                      setOpenSpotId(null)
-                    }}
-                  >
-                    ×
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">{selectedSpot.description}</p>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className="text-xs">
-                    Bortle {selectedSpot.bortleScale}
-                  </Badge>
-                  {selectedSpot.isParkingAvailable && (
-                    <Badge variant="outline" className="text-xs flex items-center gap-1">
-                      <ParkingCircle className="w-3 h-3" />
-                      주차 가능
-                    </Badge>
-                  )}
-                  {selectedSpot.isRestroomAvailable && (
-                    <Badge variant="outline" className="text-xs flex items-center gap-1">
-                      <UtensilsCrossed className="w-3 h-3" />
-                      화장실
-                    </Badge>
-                  )}
-                  {selectedSpot.isCarAccess && (
-                    <Badge variant="outline" className="text-xs flex items-center gap-1">
-                      <Car className="w-3 h-3" />
-                      차량 접근
-                    </Badge>
-                  )}
-                </div>
-                <Button
-                  variant="default"
-                  className="w-full mt-2"
-                  onClick={async () => {
-                    if (selectedSpot) {
-                      // 좌표 업데이트
-                      setLat(selectedSpot.latitude)
-                      setLon(selectedSpot.longitude)
-                      
-                      // 사용자 지정 마커 위치 변경
-                      if (markerIdRef.current) {
-                        mapProvider.removeMarker(markerIdRef.current)
-                        markerIdRef.current = null
-                      }
-                      markerIdRef.current = mapProvider.setMarker({
-                        lat: selectedSpot.latitude,
-                        lng: selectedSpot.longitude,
-                      })
-                      
-                      // 주소 업데이트
-                      const address = await mapProvider.getAddressFromPosition({
-                        lat: selectedSpot.latitude,
-                        lng: selectedSpot.longitude,
-                      })
-                      setLocationName?.(address || selectedSpot.address)
-                      
-                      // 카드 닫기
-                      setSelectedSpot(null)
-                      setOpenSpotId(null)
-                    }
-                  }}
-                >
-                  <MapPin className="w-4 h-4 mr-2" />
-                  이 위치로 설정
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+          <SpotDetailModal
+            spot={selectedSpot}
+            onClose={() => {
+              setSelectedSpot(null)
+              setOpenSpotId(null)
+            }}
+            onLocationSelect={async (lat, lng, address) => {
+              setLat(lat)
+              setLon(lng)
+              
+              // 사용자 지정 마커 위치 변경
+              if (markerIdRef.current) {
+                mapProvider.removeMarker(markerIdRef.current)
+                markerIdRef.current = null
+              }
+              markerIdRef.current = mapProvider.setMarker({ lat, lng })
+              
+              setLocationName?.(address)
+            }}
+            mapProvider={mapProvider}
+          />
         )}
+        
+        {selectedBookmark && openBookmarkId === selectedBookmark.bookmarkId && (
+          <SpotDetailModal
+            bookmark={selectedBookmark}
+            onClose={() => {
+              setSelectedBookmark(null)
+              setOpenBookmarkId(null)
+            }}
+            onLocationSelect={async (lat, lng, address) => {
+              setLat(lat)
+              setLon(lng)
+              
+              // 사용자 지정 마커 위치 변경
+              if (markerIdRef.current) {
+                mapProvider.removeMarker(markerIdRef.current)
+                markerIdRef.current = null
+              }
+              markerIdRef.current = mapProvider.setMarker({ lat, lng })
+              
+              setLocationName?.(address)
+            }}
+            mapProvider={mapProvider}
+          />
+        )}
+        {/* 북마크 추가 모달 */}
+        <BookmarkModal
+          open={isBookmarkModalOpen}
+          onOpenChange={setIsBookmarkModalOpen}
+          position={bookmarkModalPosition}
+          address={bookmarkModalAddress}
+          onSave={(newBookmark) => {
+            // 북마크가 추가되면 store에 이미 추가되어 있으므로
+            // 북마크 마커 표시 useEffect가 자동으로 트리거되어 마커가 표시됨
+            // 응답 데이터를 바로 사용하여 지도에 반영 (loadBookmarks() 호출 불필요)
+            console.log('[MapSelector] 북마크 추가 완료, 지도에 바로 반영:', newBookmark)
+          }}
+        />
       </div>
     </div>
   )
