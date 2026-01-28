@@ -5,6 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
 import { Star, Car, ParkingCircle, UtensilsCrossed, MapPin, Bookmark, X, Edit2, Check, X as XIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
@@ -37,22 +40,22 @@ export function SpotDetailModal({
   const { isAuthenticated } = authStore()
   const { isSpotBookmarked, getBookmarkBySpotId, addBookmark, updateBookmark, removeBookmark, bookmarks } = bookmarkStore()
   
-  // 북마크 이름 수정 관련 상태
-  const [isEditingName, setIsEditingName] = useState(false)
-  const [editedName, setEditedName] = useState(bookmark?.name || '')
-  const [isSavingName, setIsSavingName] = useState(false)
-
   // 북마크 prop이 변경되거나 store에서 업데이트된 북마크를 가져오기
   const currentBookmark = bookmark && bookmark.bookmarkId
     ? bookmarks.find((b) => b.bookmarkId === bookmark.bookmarkId) || bookmark
     : bookmark
 
-  // 북마크가 변경될 때 editedName 업데이트
-  useEffect(() => {
-    if (currentBookmark?.name) {
-      setEditedName(currentBookmark.name)
-    }
-  }, [currentBookmark?.name])
+  // 북마크 이름 수정 관련 상태
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [editedName, setEditedName] = useState(bookmark?.name || '')
+  const [isSavingName, setIsSavingName] = useState(false)
+  
+  // 북마크 메모 수정 관련 상태 (이름 수정과 통합됨)
+  const [editedMemo, setEditedMemo] = useState(bookmark?.memo || '')
+  
+  // 명소 북마크 추가 시 메모 입력 다이얼로그 상태
+  const [isAddBookmarkDialogOpen, setIsAddBookmarkDialogOpen] = useState(false)
+  const [addBookmarkMemo, setAddBookmarkMemo] = useState('')
 
   // 표시할 데이터 결정 (currentBookmark 사용)
   const displayData = spot
@@ -89,6 +92,17 @@ export function SpotDetailModal({
 
   const isBookmarked = spot ? isSpotBookmarked(spot.id) : false
   const existingBookmark = spot ? getBookmarkBySpotId(spot.id) : null
+
+  // 북마크가 변경될 때 editedName과 editedMemo 업데이트
+  useEffect(() => {
+    const bookmarkToUpdate = currentBookmark || existingBookmark
+    if (bookmarkToUpdate?.name) {
+      setEditedName(bookmarkToUpdate.name)
+    }
+    if (bookmarkToUpdate?.memo !== undefined) {
+      setEditedMemo(bookmarkToUpdate.memo || '')
+    }
+  }, [currentBookmark?.name, currentBookmark?.memo, existingBookmark?.name, existingBookmark?.memo])
   
   // 북마크 관련 변수도 currentBookmark 사용
   const bookmarkForDisplay = currentBookmark
@@ -144,29 +158,39 @@ export function SpotDetailModal({
         return
       }
 
-      // 북마크 추가
-      try {
-        const response = await bookmarksApi.addBookmark({
-          type: 'SPOT',
-          spotId: spot.id,
-          name: spot.title,
-          latitude: spot.latitude,
-          longitude: spot.longitude,
-          address: spot.address,
-        })
-        addBookmark(response)
-        toast({
-          title: '성공',
-          description: '북마크가 추가되었습니다.',
-        })
-      } catch (error) {
-        console.error('북마크 추가 오류:', error)
-        toast({
-          title: '오류',
-          description: '북마크 추가에 실패했습니다.',
-          variant: 'destructive',
-        })
-      }
+      // 메모 입력 다이얼로그 열기
+      setIsAddBookmarkDialogOpen(true)
+      setAddBookmarkMemo('')
+    }
+  }
+
+  const handleAddBookmarkConfirm = async () => {
+    if (!spot) return
+
+    try {
+      const response = await bookmarksApi.addBookmark({
+        type: 'SPOT',
+        spotId: spot.id,
+        name: spot.title,
+        latitude: spot.latitude,
+        longitude: spot.longitude,
+        address: spot.address,
+        memo: addBookmarkMemo.trim() || undefined,
+      })
+      addBookmark(response)
+      setIsAddBookmarkDialogOpen(false)
+      setAddBookmarkMemo('')
+      toast({
+        title: '성공',
+        description: '북마크가 추가되었습니다.',
+      })
+    } catch (error) {
+      console.error('북마크 추가 오류:', error)
+      toast({
+        title: '오류',
+        description: '북마크 추가에 실패했습니다.',
+        variant: 'destructive',
+      })
     }
   }
 
@@ -185,19 +209,24 @@ export function SpotDetailModal({
   }
 
   const handleEditName = () => {
-    if (currentBookmark) {
-      setEditedName(currentBookmark.name || '')
+    const bookmarkToEdit = currentBookmark || existingBookmark
+    if (bookmarkToEdit) {
+      setEditedName(bookmarkToEdit.name || '')
+      setEditedMemo(bookmarkToEdit.memo || '')
       setIsEditingName(true)
     }
   }
 
   const handleCancelEdit = () => {
     setIsEditingName(false)
-    setEditedName(currentBookmark?.name || '')
+    const bookmarkToEdit = currentBookmark || existingBookmark
+    setEditedName(bookmarkToEdit?.name || '')
+    setEditedMemo(bookmarkToEdit?.memo || '')
   }
 
   const handleSaveName = async () => {
-    if (!currentBookmark || !currentBookmark.bookmarkId) return
+    const bookmarkToEdit = currentBookmark || existingBookmark
+    if (!bookmarkToEdit || !bookmarkToEdit.bookmarkId) return
     
     const trimmedName = editedName.trim()
     if (!trimmedName) {
@@ -209,27 +238,32 @@ export function SpotDetailModal({
       return
     }
 
-    if (trimmedName === currentBookmark.name) {
+    const trimmedMemo = editedMemo.trim()
+    const nameChanged = trimmedName !== (bookmarkToEdit.name || '')
+    const memoChanged = trimmedMemo !== (bookmarkToEdit.memo || '')
+
+    if (!nameChanged && !memoChanged) {
       setIsEditingName(false)
       return
     }
 
     setIsSavingName(true)
     try {
-      const response = await bookmarksApi.modifyBookmark(currentBookmark.bookmarkId, {
+      const response = await bookmarksApi.modifyBookmark(bookmarkToEdit.bookmarkId, {
         name: trimmedName,
+        memo: trimmedMemo || undefined,
       })
-      updateBookmark(currentBookmark.bookmarkId, response)
+      updateBookmark(bookmarkToEdit.bookmarkId, response)
       setIsEditingName(false)
       toast({
         title: '성공',
-        description: '북마크 이름이 수정되었습니다.',
+        description: '북마크가 수정되었습니다.',
       })
     } catch (error) {
-      console.error('북마크 이름 수정 오류:', error)
+      console.error('북마크 수정 오류:', error)
       toast({
         title: '오류',
-        description: '북마크 이름 수정에 실패했습니다.',
+        description: '북마크 수정에 실패했습니다.',
         variant: 'destructive',
       })
     } finally {
@@ -272,23 +306,40 @@ export function SpotDetailModal({
         <CardHeader>
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1">
-              {isEditingName && currentBookmark ? (
-                <div className="space-y-2">
-                  <Input
-                    value={editedName}
-                    onChange={(e) => setEditedName(e.target.value)}
-                    placeholder="북마크 이름"
-                    className="text-lg font-semibold"
-                    disabled={isSavingName}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleSaveName()
-                      } else if (e.key === 'Escape') {
-                        handleCancelEdit()
-                      }
-                    }}
-                    autoFocus
-                  />
+              {isEditingName && (currentBookmark || existingBookmark) ? (
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="editName" className="text-sm font-medium">이름</Label>
+                    <Input
+                      id="editName"
+                      value={editedName}
+                      onChange={(e) => setEditedName(e.target.value)}
+                      placeholder="북마크 이름"
+                      className="text-lg font-semibold"
+                      disabled={isSavingName}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editMemo" className="text-sm font-medium">메모</Label>
+                    <Textarea
+                      id="editMemo"
+                      value={editedMemo}
+                      onChange={(e) => {
+                        if (e.target.value.length <= 500) {
+                          setEditedMemo(e.target.value)
+                        }
+                      }}
+                      placeholder="메모를 작성해주세요 (최대 500자)"
+                      disabled={isSavingName}
+                      rows={4}
+                      maxLength={500}
+                      className="resize-none"
+                    />
+                    <div className="text-xs text-muted-foreground text-right">
+                      {editedMemo.length}/500
+                    </div>
+                  </div>
                   <div className="flex gap-2">
                     <Button
                       size="sm"
@@ -319,13 +370,13 @@ export function SpotDetailModal({
                       <Star className="w-5 h-5 text-primary" />
                     )}
                     {displayData.title}
-                    {currentBookmark && isAuthenticated && (
+                    {(currentBookmark || existingBookmark) && isAuthenticated && (
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-6 w-6 p-0 ml-1"
                         onClick={handleEditName}
-                        title="이름 수정"
+                        title="이름 및 메모 수정"
                       >
                         <Edit2 className="w-3 h-3" />
                       </Button>
@@ -333,11 +384,6 @@ export function SpotDetailModal({
                   </CardTitle>
                   <CardDescription className="mt-1 text-xs">
                     {displayData.address}
-                    {currentBookmark && currentBookmark.type === 'CUSTOM' && (
-                      <Badge variant="outline" className="ml-2 text-xs">
-                        나만의 장소
-                      </Badge>
-                    )}
                   </CardDescription>
                 </>
               )}
@@ -350,8 +396,32 @@ export function SpotDetailModal({
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          {displayData.description && (
+          {/* 명소 설명 (명소인 경우에만 표시) */}
+          {spot && displayData.description && (
             <p className="text-sm text-muted-foreground">{displayData.description}</p>
+          )}
+
+          {/* 북마크 메모 표시 (북마크인 경우, 수정 모드가 아닐 때만) */}
+          {((currentBookmark || existingBookmark) && isAuthenticated && !isEditingName) && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-medium">메모</Label>
+              </div>
+              {(() => {
+                const bookmarkToShow = currentBookmark || existingBookmark
+                return bookmarkToShow?.memo ? (
+                  <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
+                    <p className="text-sm text-foreground whitespace-pre-wrap break-words leading-relaxed">
+                      {bookmarkToShow.memo}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-border/50 bg-muted/20 p-3">
+                    <p className="text-sm text-muted-foreground italic text-center">메모가 없습니다.</p>
+                  </div>
+                )
+              })()}
+            </div>
           )}
 
           {/* 명소 정보 (명소인 경우에만 표시) */}
@@ -409,6 +479,60 @@ export function SpotDetailModal({
           </Button>
         </CardContent>
       </Card>
+
+      {/* 명소 북마크 추가 시 메모 입력 다이얼로그 */}
+      <Dialog open={isAddBookmarkDialogOpen} onOpenChange={setIsAddBookmarkDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Star className="w-5 h-5 text-primary" />
+              북마크 추가
+            </DialogTitle>
+            <DialogDescription>
+              {spot?.title}을(를) 북마크로 추가합니다.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* 메모 입력 */}
+            <div className="space-y-2">
+              <Label htmlFor="addBookmarkMemo">메모 (선택사항)</Label>
+              <Textarea
+                id="addBookmarkMemo"
+                value={addBookmarkMemo}
+                onChange={(e) => {
+                  if (e.target.value.length <= 500) {
+                    setAddBookmarkMemo(e.target.value)
+                  }
+                }}
+                placeholder="이 장소에 대한 메모를 작성해주세요 (최대 500자)"
+                rows={4}
+                maxLength={500}
+                className="resize-none"
+              />
+              <div className="text-xs text-muted-foreground text-right">
+                {addBookmarkMemo.length}/500
+              </div>
+            </div>
+          </div>
+
+          {/* 버튼 */}
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsAddBookmarkDialogOpen(false)
+                setAddBookmarkMemo('')
+              }}
+            >
+              취소
+            </Button>
+            <Button onClick={handleAddBookmarkConfirm}>
+              추가
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

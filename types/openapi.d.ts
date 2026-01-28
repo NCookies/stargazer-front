@@ -222,6 +222,7 @@ export interface components {
     schemas: {
         ModifyBookmarkRequest: {
             name: string;
+            memo?: string;
         };
         BookmarkResponse: {
             /** Format: int64 */
@@ -235,6 +236,7 @@ export interface components {
             longitude?: number;
             address?: string;
             type?: string;
+            memo?: string;
         };
         AddBookmarkRequest: {
             /** @enum {string} */
@@ -247,6 +249,7 @@ export interface components {
             /** Format: double */
             longitude?: number;
             address?: string;
+            memo?: string;
         };
         /** @description 인증 토큰 응답 DTO */
         AuthTokenResponse: {

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Loader2, MapPin } from 'lucide-react'
@@ -27,6 +28,7 @@ export function BookmarkModal({
   onSave,
 }: BookmarkModalProps) {
   const [customName, setCustomName] = useState('')
+  const [memo, setMemo] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast()
   const { addBookmark, bookmarks } = bookmarkStore()
@@ -35,6 +37,7 @@ export function BookmarkModal({
   useEffect(() => {
     if (open) {
       setCustomName(address || '')
+      setMemo('')
     }
   }, [open, address])
 
@@ -85,6 +88,7 @@ export function BookmarkModal({
         latitude: position.lat,
         longitude: position.lng,
         address: address,
+        memo: memo.trim() || undefined,
       })
 
       // Store에 추가
@@ -98,6 +102,7 @@ export function BookmarkModal({
       // 모달 닫기
       onOpenChange(false)
       setCustomName('')
+      setMemo('')
 
       // 콜백 호출 (추가된 북마크 정보 전달)
       onSave?.(response)
@@ -116,6 +121,7 @@ export function BookmarkModal({
   const handleCancel = () => {
     onOpenChange(false)
     setCustomName('')
+    setMemo('')
   }
 
   return (
@@ -142,6 +148,28 @@ export function BookmarkModal({
               placeholder="예: 우리 집, 관측 장소 등"
               disabled={isSaving}
             />
+          </div>
+
+          {/* 메모 입력 */}
+          <div className="space-y-2">
+            <Label htmlFor="memo">메모 (선택사항)</Label>
+            <Textarea
+              id="memo"
+              value={memo}
+              onChange={(e) => {
+                if (e.target.value.length <= 500) {
+                  setMemo(e.target.value)
+                }
+              }}
+              placeholder="이 장소에 대한 메모를 작성해주세요 (최대 500자)"
+              disabled={isSaving}
+              rows={4}
+              maxLength={500}
+              className="resize-none"
+            />
+            <div className="text-xs text-muted-foreground text-right">
+              {memo.length}/500
+            </div>
           </div>
 
           {/* 주소 표시 */}

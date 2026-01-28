@@ -83,7 +83,7 @@ export const bookmarksApi = {
    */
   async modifyBookmark(
     bookmarkId: number,
-    data: { name: string }
+    data: { name: string; memo?: string }
   ): Promise<any> {
     try {
       // PATCH 메서드 사용
