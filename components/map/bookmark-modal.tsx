@@ -126,7 +126,7 @@ export function BookmarkModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MapPin className="w-5 h-5" />
@@ -137,17 +137,25 @@ export function BookmarkModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-4 py-4 overflow-y-auto flex-1 min-h-0">
           {/* 장소 이름 입력 */}
           <div className="space-y-2">
             <Label htmlFor="customName">장소 이름 *</Label>
             <Input
               id="customName"
               value={customName}
-              onChange={(e) => setCustomName(e.target.value)}
+              onChange={(e) => {
+                if (e.target.value.length <= 50) {
+                  setCustomName(e.target.value)
+                }
+              }}
               placeholder="예: 우리 집, 관측 장소 등"
               disabled={isSaving}
+              maxLength={50}
             />
+            <div className="text-xs text-muted-foreground text-right">
+              {customName.length}/50
+            </div>
           </div>
 
           {/* 메모 입력 */}

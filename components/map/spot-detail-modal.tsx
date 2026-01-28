@@ -56,6 +56,10 @@ export function SpotDetailModal({
   // 명소 북마크 추가 시 메모 입력 다이얼로그 상태
   const [isAddBookmarkDialogOpen, setIsAddBookmarkDialogOpen] = useState(false)
   const [addBookmarkMemo, setAddBookmarkMemo] = useState('')
+  
+  // 메모 전체 보기 다이얼로그 상태
+  const [isMemoViewDialogOpen, setIsMemoViewDialogOpen] = useState(false)
+  const [viewingMemo, setViewingMemo] = useState('')
 
   // 표시할 데이터 결정 (currentBookmark 사용)
   const displayData = spot
@@ -296,14 +300,14 @@ export function SpotDetailModal({
   }
 
   return (
-    <div className="absolute top-4 right-4 z-20 max-w-sm w-full">
+    <div className="absolute top-4 right-4 z-20 max-w-sm w-full max-h-[90vh] flex flex-col">
       <Card
         className={cn(
-          'border-border/50 bg-card/95 backdrop-blur-sm shadow-lg',
+          'border-border/50 bg-card/95 backdrop-blur-sm shadow-lg flex flex-col overflow-hidden',
           currentBookmark && 'border-blue-500/50' // 북마크는 파란색 테두리
         )}
       >
-        <CardHeader>
+        <CardHeader className="overflow-y-auto max-h-[40vh] min-h-0">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1">
               {isEditingName && (currentBookmark || existingBookmark) ? (
@@ -313,12 +317,20 @@ export function SpotDetailModal({
                     <Input
                       id="editName"
                       value={editedName}
-                      onChange={(e) => setEditedName(e.target.value)}
+                      onChange={(e) => {
+                        if (e.target.value.length <= 50) {
+                          setEditedName(e.target.value)
+                        }
+                      }}
                       placeholder="북마크 이름"
                       className="text-lg font-semibold"
                       disabled={isSavingName}
+                      maxLength={50}
                       autoFocus
                     />
+                    <div className="text-xs text-muted-foreground text-right">
+                      {editedName.length}/50
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="editMemo" className="text-sm font-medium">메모</Label>
@@ -395,7 +407,7 @@ export function SpotDetailModal({
             )}
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-3 overflow-y-auto flex-1 min-h-0">
           {/* 명소 설명 (명소인 경우에만 표시) */}
           {spot && displayData.description && (
             <p className="text-sm text-muted-foreground">{displayData.description}</p>
@@ -409,11 +421,32 @@ export function SpotDetailModal({
               </div>
               {(() => {
                 const bookmarkToShow = currentBookmark || existingBookmark
-                return bookmarkToShow?.memo ? (
-                  <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
+                const memo = bookmarkToShow?.memo || ''
+                const MEMO_PREVIEW_LENGTH = 100
+                const shouldTruncate = memo.length > MEMO_PREVIEW_LENGTH
+                const previewMemo = shouldTruncate ? memo.substring(0, MEMO_PREVIEW_LENGTH) + '...' : memo
+                
+                return memo ? (
+                  <div 
+                    className={cn(
+                      "rounded-lg border border-border/50 bg-muted/30 p-3",
+                      shouldTruncate && "cursor-pointer hover:bg-muted/50 transition-colors"
+                    )}
+                    onClick={() => {
+                      if (shouldTruncate) {
+                        setViewingMemo(memo)
+                        setIsMemoViewDialogOpen(true)
+                      }
+                    }}
+                  >
                     <p className="text-sm text-foreground whitespace-pre-wrap break-words leading-relaxed">
-                      {bookmarkToShow.memo}
+                      {previewMemo}
                     </p>
+                    {shouldTruncate && (
+                      <p className="text-xs text-muted-foreground mt-2 text-center">
+                        클릭하여 전체 메모 보기
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="rounded-lg border border-dashed border-border/50 bg-muted/20 p-3">
@@ -529,6 +562,27 @@ export function SpotDetailModal({
             </Button>
             <Button onClick={handleAddBookmarkConfirm}>
               추가
+            </Button>
+          </div>
+          </DialogContent>
+        </Dialog>
+
+      {/* 메모 전체 보기 다이얼로그 */}
+      <Dialog open={isMemoViewDialogOpen} onOpenChange={setIsMemoViewDialogOpen}>
+        <DialogContent className="sm:max-w-md max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>메모 전체 보기</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto flex-1 min-h-0">
+            <div className="rounded-lg border border-border/50 bg-muted/30 p-4">
+              <p className="text-sm text-foreground whitespace-pre-wrap break-words leading-relaxed">
+                {viewingMemo}
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end mt-4">
+            <Button onClick={() => setIsMemoViewDialogOpen(false)}>
+              닫기
             </Button>
           </div>
         </DialogContent>
