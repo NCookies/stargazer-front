@@ -108,7 +108,7 @@ function createBookmarkIconSVG(config: SpotMarkerIconConfig): string {
   const center = size / 2
   const radius = center - borderWidth
 
-  // 별 모양 아이콘
+  // 별 모양 아이콘 (lucide-react Star 아이콘과 유사한 형태)
   const svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
     <circle cx="${center}" cy="${center}" r="${radius}" fill="${backgroundColor}" stroke="${borderColor}" stroke-width="${borderWidth}"/>
     <!-- 별 모양 -->

@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Search, Loader2, Star, Car, ParkingCircle, UtensilsCrossed, MapPin, Crosshair, Sparkles, Maximize2, Minimize2, Bookmark } from 'lucide-react'
+import { Search, Loader2, Star, Car, ParkingCircle, UtensilsCrossed, MapPin, Crosshair, Sparkles, Maximize2, Minimize2, Bookmark, Filter } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useMapProvider } from './map-provider'
 import type { PlaceSearchResult, MapPosition } from '@/lib/map/types'
 import type { StargazingSpot, CommonResponse } from '@/types/api'
@@ -777,6 +778,61 @@ export default function MapSelector({
         )}
       </form>
 
+      {/* 필터링 토글 버튼 - 별도 줄 */}
+      {isInitialized && (
+        <TooltipProvider>
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="bg-card/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-border/50">
+              <div className="flex flex-wrap gap-3 items-center">
+                {/* 필터 제목 */}
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Filter className="h-4 w-4" />
+                  <span>표시 옵션</span>
+                </div>
+                <div className="h-4 w-px bg-border" />
+                {/* 필터 버튼들 */}
+                <div className="flex flex-wrap gap-2 items-center">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={isSpotVisible ? "default" : "outline"}
+                        size="icon"
+                        className="h-9 w-9"
+                        onClick={() => setIsSpotVisible(!isSpotVisible)}
+                        aria-label="명소 보기"
+                      >
+                        <Sparkles className={cn("h-4 w-4", isSpotVisible && "text-primary-foreground")} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>명소 보기</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  {isAuthenticated && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant={isBookmarkVisible ? "default" : "outline"}
+                          size="icon"
+                          className="h-9 w-9"
+                          onClick={() => setIsBookmarkVisible(!isBookmarkVisible)}
+                          aria-label="나만의 장소 보기"
+                        >
+                          <Star className={cn("h-4 w-4", isBookmarkVisible && "text-primary-foreground")} />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>나만의 장소 보기</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </TooltipProvider>
+      )}
+
       {/* 지도 */}
       <div className={`w-full rounded-lg overflow-hidden border border-gray-700 relative z-0 transition-all duration-300 ${isMapExpanded ? 'h-[600px]' : 'h-96'}`}>
         {/* 지도 크기 토글 버튼 */}
@@ -822,37 +878,6 @@ export default function MapSelector({
             ) : (
               <p className="text-muted-foreground">지도를 불러오는 중...</p>
             )}
-          </div>
-        )}
-        {/* 필터링 토글 버튼 */}
-        {isInitialized && (
-          <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
-            <div className="bg-card/95 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-border/50">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="spot-filter"
-                    checked={isSpotVisible}
-                    onCheckedChange={setIsSpotVisible}
-                  />
-                  <Label htmlFor="spot-filter" className="text-sm font-medium cursor-pointer">
-                    명소 보기
-                  </Label>
-                </div>
-                {isAuthenticated && (
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="bookmark-filter"
-                      checked={isBookmarkVisible}
-                      onCheckedChange={setIsBookmarkVisible}
-                    />
-                    <Label htmlFor="bookmark-filter" className="text-sm font-medium cursor-pointer">
-                      나만의 장소 보기
-                    </Label>
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
         )}
         {/* 명소 찾기 및 현재 위치로 이동 버튼 */}
