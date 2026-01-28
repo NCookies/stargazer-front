@@ -126,6 +126,24 @@ export function SpotDetailModal({
         })
       }
     } else {
+      // 북마크 추가 전 좌표 중복 확인
+      const hasDuplicateCoordinates = bookmarks.some((bookmark) => {
+        if (!bookmark.latitude || !bookmark.longitude) return false
+        // 좌표값이 완전히 동일한지 확인 (부동소수점 오차 고려)
+        const latDiff = Math.abs(bookmark.latitude - spot.latitude)
+        const lonDiff = Math.abs(bookmark.longitude - spot.longitude)
+        return latDiff < 0.000001 && lonDiff < 0.000001
+      })
+
+      if (hasDuplicateCoordinates) {
+        toast({
+          title: '중복된 위치',
+          description: '이미 동일한 좌표의 북마크가 존재합니다.',
+          variant: 'destructive',
+        })
+        return
+      }
+
       // 북마크 추가
       try {
         const response = await bookmarksApi.addBookmark({

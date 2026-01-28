@@ -83,13 +83,11 @@ export const bookmarksApi = {
    */
   async modifyBookmark(
     bookmarkId: number,
-    data: paths["/api/v1/bookmarks/{bookmarkId}"]["put"]["requestBody"]["content"]["application/json"]
-  ): Promise<paths["/api/v1/bookmarks/{bookmarkId}"]["put"]["responses"]["200"]["content"]["*/*"]> {
+    data: { name: string }
+  ): Promise<any> {
     try {
-      const response = await api.put<
-        "/api/v1/bookmarks/{bookmarkId}",
-        paths["/api/v1/bookmarks/{bookmarkId}"]["put"]
-      >(`/api/v1/bookmarks/${bookmarkId}`, data);
+      // PATCH 메서드 사용
+      const response = await api.patch(`/api/v1/bookmarks/${bookmarkId}`, data);
 
       return response;
     } catch (error) {

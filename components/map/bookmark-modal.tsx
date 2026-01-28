@@ -29,7 +29,7 @@ export function BookmarkModal({
   const [customName, setCustomName] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast()
-  const { addBookmark } = bookmarkStore()
+  const { addBookmark, bookmarks } = bookmarkStore()
 
   // 모달이 열릴 때마다 기본값: 장소 이름은 주소로 채움
   useEffect(() => {
@@ -52,6 +52,24 @@ export function BookmarkModal({
       toast({
         title: '오류',
         description: '장소 이름을 입력해주세요.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    // 북마크 추가 전 좌표 중복 확인
+    const hasDuplicateCoordinates = bookmarks.some((bookmark) => {
+      if (!bookmark.latitude || !bookmark.longitude) return false
+      // 좌표값이 완전히 동일한지 확인 (부동소수점 오차 고려)
+      const latDiff = Math.abs(bookmark.latitude - position.lat)
+      const lonDiff = Math.abs(bookmark.longitude - position.lng)
+      return latDiff < 0.000001 && lonDiff < 0.000001
+    })
+
+    if (hasDuplicateCoordinates) {
+      toast({
+        title: '중복된 위치',
+        description: '이미 동일한 좌표의 북마크가 존재합니다.',
         variant: 'destructive',
       })
       return

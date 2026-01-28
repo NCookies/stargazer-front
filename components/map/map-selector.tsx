@@ -297,7 +297,59 @@ export default function MapSelector({
     
     try {
       const bookmarkList = await bookmarksApi.getBookmarkList()
-      setBookmarks(bookmarkList)
+      
+      // 중복 데이터 필터링 (좌표값이 완전히 동일한 경우)
+      const seenCoordinates = new Map<string, number>()
+      const filteredBookmarks: typeof bookmarkList = []
+      const duplicateIds: number[] = []
+      
+      bookmarkList.forEach((bookmark) => {
+        if (!bookmark.latitude || !bookmark.longitude) {
+          // 좌표가 없는 경우는 그대로 추가
+          filteredBookmarks.push(bookmark)
+          return
+        }
+        
+        // 좌표를 키로 사용 (부동소수점 오차 고려하여 반올림)
+        const coordKey = `${Math.round(bookmark.latitude * 1000000)}_${Math.round(bookmark.longitude * 1000000)}`
+        
+        if (seenCoordinates.has(coordKey)) {
+          // 중복 발견: 첫 번째 것만 유지하고 나머지는 제거
+          const firstIndex = seenCoordinates.get(coordKey)!
+          const firstBookmark = filteredBookmarks[firstIndex]
+          
+          duplicateIds.push(bookmark.bookmarkId || 0)
+          console.warn(
+            `[북마크 중복 데이터 감지] 서버에서 중복된 좌표의 북마크가 발견되었습니다.`,
+            {
+              유지되는_북마크: {
+                id: firstBookmark.bookmarkId,
+                name: firstBookmark.name,
+                좌표: `${firstBookmark.latitude}, ${firstBookmark.longitude}`,
+              },
+              제거된_북마크: {
+                id: bookmark.bookmarkId,
+                name: bookmark.name,
+                좌표: `${bookmark.latitude}, ${bookmark.longitude}`,
+              },
+            }
+          )
+        } else {
+          // 처음 보는 좌표: 추가하고 인덱스 저장
+          seenCoordinates.set(coordKey, filteredBookmarks.length)
+          filteredBookmarks.push(bookmark)
+        }
+      })
+      
+      // 중복이 발견된 경우 로그 출력
+      if (duplicateIds.length > 0) {
+        console.warn(
+          `[북마크 중복 데이터 필터링 완료] 총 ${duplicateIds.length}개의 중복 북마크가 제거되었습니다.`,
+          { 제거된_북마크_IDs: duplicateIds }
+        )
+      }
+      
+      setBookmarks(filteredBookmarks)
     } catch (error) {
       console.error('북마크 데이터 로드 오류:', error)
       // 인증 오류인 경우 북마크 리스트를 비움

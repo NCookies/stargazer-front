@@ -56,6 +56,18 @@ export class ApiClient {
   }
 
   /**
+   * PATCH 요청
+   */
+  async patch<Path extends keyof paths>(
+    path: Path,
+    data?: any,
+    params?: Record<string, any>
+  ): Promise<any> {
+    const response = await apiClient.patch<CommonResponse<any>>(path as string, data, { params });
+    return (response.data as any).data ?? response.data;
+  }
+
+  /**
    * DELETE 요청
    */
   async delete<Path extends keyof paths>(
