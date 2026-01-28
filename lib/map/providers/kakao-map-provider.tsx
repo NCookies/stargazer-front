@@ -225,6 +225,7 @@ export class KakaoMapProvider implements IMapProvider {
     const markerId = `user_marker_${this.nextMarkerId++}`
     const marker = new window.kakao.maps.Marker({
       position: markerPosition,
+      draggable: true, // 사용자 마커는 드래그 가능하도록 설정
       ...options,
     })
 
@@ -235,7 +236,12 @@ export class KakaoMapProvider implements IMapProvider {
     // 클릭 이벤트 핸들러
     if (this.eventHandlers.onMarkerClick) {
       window.kakao.maps.event.addListener(marker, 'click', () => {
-        this.eventHandlers.onMarkerClick?.(markerId, { type: 'user' })
+        const pos = marker.getPosition()
+        const position = {
+          lat: pos.getLat(),
+          lng: pos.getLng(),
+        }
+        this.eventHandlers.onMarkerClick?.(markerId, { type: 'user' }, position)
       })
     }
 
@@ -297,7 +303,12 @@ export class KakaoMapProvider implements IMapProvider {
     // 클릭 이벤트 핸들러
     if (options?.clickable !== false && this.eventHandlers.onMarkerClick) {
       window.kakao.maps.event.addListener(marker, 'click', () => {
-        this.eventHandlers.onMarkerClick?.(markerId, markerData)
+        const pos = marker.getPosition()
+        const position = {
+          lat: pos.getLat(),
+          lng: pos.getLng(),
+        }
+        this.eventHandlers.onMarkerClick?.(markerId, markerData, position)
       })
     }
 

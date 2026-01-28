@@ -128,6 +128,18 @@
   - CUSTOM 타입: 사용자가 직접 추가한 나만의 장소
   - 에러 처리 포함
 
+### PUT /api/v1/bookmarks/{bookmarkId}
+- **함수명**: `bookmarksApi.modifyBookmark(bookmarkId: number, data): Promise<BookmarkResponse>`
+- **설명**: 북마크 이름 수정 (이름만 수정 가능)
+- **파라미터**: 
+  - `bookmarkId` (경로 파라미터)
+  - `{ name: string }` (요청 본문)
+- **반환값**: 수정된 북마크 정보
+- **인증**: 필요 (JWT Bearer Token)
+- **특이사항**:
+  - 북마크 이름만 수정 가능
+  - 에러 처리 포함
+
 ### DELETE /api/v1/bookmarks/{bookmarkId}
 - **함수명**: `bookmarksApi.deleteBookmark(bookmarkId: number): Promise<void>`
 - **설명**: 북마크 삭제
@@ -146,7 +158,7 @@ lib/api/
 ├── members.ts         # 회원 API (2개 엔드포인트)
 ├── spots.ts           # 관측지 API (1개 엔드포인트)
 ├── stargazing.ts      # 별 관측 API (2개 엔드포인트)
-├── bookmarks.ts       # 북마크 API (3개 엔드포인트)
+├── bookmarks.ts       # 북마크 API (4개 엔드포인트)
 ├── index.ts           # 통합 export
 └── axios.ts           # Axios 인스턴스 및 인터셉터
 
@@ -164,8 +176,8 @@ types/
 - **회원 API**: 2개
 - **관측지 API**: 1개
 - **별 관측 API**: 2개
-- **북마크 API**: 3개
-- **총계**: 12개 엔드포인트
+- **북마크 API**: 4개
+- **총계**: 13개 엔드포인트
 
 ## 업데이트 가이드
 

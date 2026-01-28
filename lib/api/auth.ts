@@ -123,13 +123,17 @@ export const authApi = {
         console.error('[reissue] 에러:', error.message);
       } else if ((error as AxiosError).response) {
         const axiosError = error as AxiosError;
+        const status = axiosError.response?.status;
         console.error('[reissue] API 에러:', {
-          status: axiosError.response?.status,
+          status,
           data: axiosError.response?.data,
         });
+        
+        // 401 에러인 경우에만 로그아웃 처리 (Refresh Token이 만료되었거나 없음)
+        if (status === 401) {
+          authStore.getState().logout();
+        }
       }
-      // 에러 발생 시 로그아웃 처리
-      authStore.getState().logout();
       throw error;
     }
   },

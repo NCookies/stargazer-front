@@ -73,6 +73,40 @@ export const bookmarksApi = {
   },
 
   /**
+   * 북마크 수정
+   * 북마크의 이름을 수정합니다.
+   * 인증이 필요합니다.
+   * 
+   * @param bookmarkId 수정할 북마크 ID
+   * @param data 북마크 수정 요청 데이터 (name만 수정 가능)
+   * @returns 수정된 북마크 정보
+   */
+  async modifyBookmark(
+    bookmarkId: number,
+    data: paths["/api/v1/bookmarks/{bookmarkId}"]["put"]["requestBody"]["content"]["application/json"]
+  ): Promise<paths["/api/v1/bookmarks/{bookmarkId}"]["put"]["responses"]["200"]["content"]["*/*"]> {
+    try {
+      const response = await api.put<
+        "/api/v1/bookmarks/{bookmarkId}",
+        paths["/api/v1/bookmarks/{bookmarkId}"]["put"]
+      >(`/api/v1/bookmarks/${bookmarkId}`, data);
+
+      return response;
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error('[modifyBookmark] 에러:', error.message);
+      } else if ((error as AxiosError).response) {
+        const axiosError = error as AxiosError;
+        console.error('[modifyBookmark] API 에러:', {
+          status: axiosError.response?.status,
+          data: axiosError.response?.data,
+        });
+      }
+      throw error;
+    }
+  },
+
+  /**
    * 북마크 삭제
    * 북마크를 삭제합니다.
    * 인증이 필요합니다.

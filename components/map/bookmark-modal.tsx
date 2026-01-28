@@ -16,7 +16,7 @@ interface BookmarkModalProps {
   onOpenChange: (open: boolean) => void
   position: MapPosition | null
   address: string
-  onSave?: () => void
+  onSave?: (bookmark: any) => void
 }
 
 export function BookmarkModal({
@@ -81,8 +81,8 @@ export function BookmarkModal({
       onOpenChange(false)
       setCustomName('')
 
-      // 콜백 호출
-      onSave?.()
+      // 콜백 호출 (추가된 북마크 정보 전달)
+      onSave?.(response)
     } catch (error) {
       console.error('북마크 저장 오류:', error)
       toast({

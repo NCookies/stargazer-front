@@ -23,7 +23,7 @@ export interface MapEventHandlers {
   onMapClick?: (position: MapPosition) => void;
   onMapRightClick?: (position: MapPosition) => void;
   onMarkerDrag?: (position: MapPosition) => void;
-  onMarkerClick?: (markerId: string, data?: any) => void;
+  onMarkerClick?: (markerId: string, data?: any, position?: MapPosition) => void;
 }
 
 /**

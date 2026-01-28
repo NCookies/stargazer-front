@@ -43,8 +43,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
           authStore.getState().logout()
         }
       } else {
-        // Access Token이 없으면 확실히 로그아웃 상태로 설정
-        authStore.getState().logout()
+        // Access Token이 없어도 Refresh Token이 있을 수 있으므로 reissue 시도
+        try {
+          await authApi.reissue()
+          // 재발급 성공 시 유저 정보 조회
+          try {
+            await authApi.getMe()
+          } catch (error) {
+            console.error('초기 유저 정보 조회 실패:', error)
+          }
+        } catch (error) {
+          // reissue 실패 시에만 로그아웃 상태로 설정
+          // (이미 로그아웃 상태이므로 명시적으로 호출하지 않음)
+          console.log('Refresh Token이 없거나 만료됨, 로그인 필요')
+        }
       }
       setIsInitializing(false)
     }

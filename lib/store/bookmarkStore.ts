@@ -9,6 +9,7 @@ interface BookmarkState {
   error: string | null;
   setBookmarks: (bookmarks: BookmarkResponse[]) => void;
   addBookmark: (bookmark: BookmarkResponse) => void;
+  updateBookmark: (bookmarkId: number, bookmark: BookmarkResponse) => void;
   removeBookmark: (bookmarkId: number) => void;
   setIsLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
@@ -27,9 +28,40 @@ export const bookmarkStore = create<BookmarkState>((set, get) => ({
   
   setBookmarks: (bookmarks) => set({ bookmarks }),
   
-  addBookmark: (bookmark) => set((state) => ({
-    bookmarks: [...state.bookmarks, bookmark],
-  })),
+  addBookmark: (bookmark) => set((state) => {
+    // 중복 체크: 같은 bookmarkId가 이미 있으면 추가하지 않음
+    const existingIndex = state.bookmarks.findIndex(
+      (b) => b.bookmarkId === bookmark.bookmarkId
+    )
+    
+    if (existingIndex >= 0) {
+      // 이미 존재하면 업데이트
+      const newBookmarks = [...state.bookmarks]
+      newBookmarks[existingIndex] = bookmark
+      return { bookmarks: newBookmarks }
+    }
+    
+    // 새로 추가
+    return {
+      bookmarks: [...state.bookmarks, bookmark],
+    }
+  }),
+  
+  updateBookmark: (bookmarkId, bookmark) => set((state) => {
+    const existingIndex = state.bookmarks.findIndex(
+      (b) => b.bookmarkId === bookmarkId
+    )
+    
+    if (existingIndex >= 0) {
+      // 업데이트
+      const newBookmarks = [...state.bookmarks]
+      newBookmarks[existingIndex] = bookmark
+      return { bookmarks: newBookmarks }
+    }
+    
+    // 없으면 그대로 반환
+    return state
+  }),
   
   removeBookmark: (bookmarkId) => set((state) => ({
     bookmarks: state.bookmarks.filter((b) => b.bookmarkId !== bookmarkId),
