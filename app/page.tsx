@@ -1,20 +1,23 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Header } from "@/components/header"
 import { InputSection } from "@/components/input-section"
 import { ResultSection } from "@/components/result-section"
 import { ForecastView } from "@/components/forecast-view"
+import { TodayRecommendView } from "@/components/today-recommend-view"
 import { StarField } from "@/components/star-field"
+import { authStore } from "@/lib/store/authStore"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { MapPin, Camera, ArrowRight } from "lucide-react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
-import type { StargazingResponse, StargazingForecastResponse, CommonResponse } from "@/types/api"
+import type { StargazingResponse, StargazingForecastResponse, RecommendedBookmarkResponse } from "@/types/api"
 import { useToast } from "@/hooks/use-toast"
-import { stargazingApi } from "@/lib/api"
+import { stargazingApi, recommendsApi } from "@/lib/api"
+import { AxiosError } from "axios"
 
 const MapSelector = dynamic(() => import("@/components/map/map-selector"), {
   ssr: false,
@@ -28,6 +31,7 @@ const MapSelector = dynamic(() => import("@/components/map/map-selector"), {
 export default function Home() {
   const [activeTab, setActiveTab] = useState("forecast")
   const { toast } = useToast()
+  const isAuthenticated = authStore((state) => state.isAuthenticated)
   
   // 현재 관측 관련 상태
   const [hasResult, setHasResult] = useState(false)
@@ -41,9 +45,15 @@ export default function Home() {
   const [isForecastLoading, setIsForecastLoading] = useState(false)
   const [forecastError, setForecastError] = useState<string | null>(null)
 
+  // 오늘의 추천 북마크 상태 (탭 전환해도 유지)
+  const [recommendData, setRecommendData] = useState<RecommendedBookmarkResponse | null>(null)
+  const [isRecommendLoading, setIsRecommendLoading] = useState(false)
+  const [recommendError, setRecommendError] = useState<string | null>(null)
+
   const [lat, setLat] = useState(37.5665); // 서울 기본값
   const [lon, setLon] = useState(126.9780);
   const [isLocationInitialized, setIsLocationInitialized] = useState(false);
+  const mapCardRef = useRef<HTMLDivElement>(null);
 
   // 선택된 시간 상태 (탭 전환 시에도 유지)
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
@@ -266,6 +276,24 @@ export default function Home() {
     }
   }, [activeTab, fetchForecast])
 
+  // 오늘의 추천 북마크 조회 (상태는 page에 두어 탭 전환해도 유지)
+  const handleFetchRecommend = useCallback(async () => {
+    setIsRecommendLoading(true)
+    setRecommendError(null)
+    try {
+      const response = await recommendsApi.getTodayRecommendedBookmarks()
+      setRecommendData(response)
+    } catch (err) {
+      if (err instanceof AxiosError && err.response?.status === 401) {
+        setRecommendError("로그인이 필요합니다.")
+      } else {
+        setRecommendError("잠시 후 다시 시도해 주세요.")
+      }
+    } finally {
+      setIsRecommendLoading(false)
+    }
+  }, [])
+
   return (
     <div className="relative min-h-screen">
       <StarField />
@@ -297,23 +325,26 @@ export default function Home() {
             </Card>
 
             {/* 공동 지도 선택 */}
-            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="text-2xl flex items-center gap-2">
-                  <MapPin className="w-6 h-6 text-primary" />
-                  위치 선택
-                </CardTitle>
-                <CardDescription>지도에서 위치를 선택하세요</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <MapSelector lat={lat} lon={lon} setLat={setLat} setLon={setLon} />
-              </CardContent>
-            </Card>
+            <div ref={mapCardRef}>
+              <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="text-2xl flex items-center gap-2">
+                    <MapPin className="w-6 h-6 text-primary" />
+                    위치 선택
+                  </CardTitle>
+                  <CardDescription>지도에서 위치를 선택하세요</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <MapSelector lat={lat} lon={lon} setLat={setLat} setLon={setLon} />
+                </CardContent>
+              </Card>
+            </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsList className="grid w-full max-w-md grid-cols-3">
                 <TabsTrigger value="forecast">주간 예보</TabsTrigger>
                 <TabsTrigger value="current">오늘 분석</TabsTrigger>
+                <TabsTrigger value="recommend">오늘의 추천</TabsTrigger>
               </TabsList>
               
               <TabsContent value="forecast" className="mt-6 space-y-4">
@@ -348,6 +379,35 @@ export default function Home() {
                       <p className="text-center text-muted-foreground">
                         위의 "관측 적합도 계산하기" 버튼을 눌러 현재 관측 정보를 확인하세요.
                       </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              <TabsContent value="recommend" className="mt-6">
+                {isAuthenticated ? (
+                  <TodayRecommendView
+                    data={recommendData}
+                    isLoading={isRecommendLoading}
+                    error={recommendError}
+                    onFetch={handleFetchRecommend}
+                    onFocusOnMap={(lat: number, lon: number) => {
+                      setLat(lat)
+                      setLon(lon)
+                      mapCardRef.current?.scrollIntoView({ behavior: "smooth" })
+                    }}
+                  />
+                ) : (
+                  <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+                    <CardContent className="pt-8 pb-8">
+                      <p className="text-center text-muted-foreground mb-4">
+                        이 기능을 사용하려면 로그인이 필요합니다.
+                      </p>
+                      <div className="flex justify-center">
+                        <Link href="/login">
+                          <Button>로그인하기</Button>
+                        </Link>
+                      </div>
                     </CardContent>
                   </Card>
                 )}

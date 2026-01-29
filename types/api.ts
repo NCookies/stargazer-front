@@ -75,3 +75,25 @@ export interface StargazingSpot {
   isRestroomAvailable: boolean
   isCarAccess: boolean
 }
+
+// 오늘의 추천 북마크 API 응답 타입
+export interface RecommendedBookmarkItemResponse {
+  bookmarkId: number
+  name: string
+  latitude: number
+  longitude: number
+  address: string
+  score: number // 0–100
+  reasons: string[]
+  starGrade: string
+  cloudCover: number
+  moonPhase: string
+  bestTime: string
+}
+
+export interface RecommendedBookmarkResponse {
+  items: RecommendedBookmarkItemResponse[]
+  totalRequested: number
+  analyzedCount: number
+  isPartialResult: boolean
+}

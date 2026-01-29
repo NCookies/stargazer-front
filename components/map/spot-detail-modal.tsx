@@ -300,14 +300,14 @@ export function SpotDetailModal({
   }
 
   return (
-    <div className="absolute top-4 right-4 z-20 max-w-sm w-full max-h-[90vh] flex flex-col">
+    <div className="absolute top-4 right-4 z-20 max-w-sm w-full max-h-[90vh] flex flex-col overflow-hidden">
       <Card
         className={cn(
-          'border-border/50 bg-card/95 backdrop-blur-sm shadow-lg flex flex-col overflow-hidden',
+          'border-border/50 bg-card/95 backdrop-blur-sm shadow-lg flex flex-col flex-1 min-h-0 max-h-[90vh] overflow-hidden',
           currentBookmark && 'border-blue-500/50' // 북마크는 파란색 테두리
         )}
       >
-        <CardHeader className="overflow-y-auto max-h-[40vh] min-h-0">
+        <CardHeader className="overflow-y-auto max-h-[40vh] min-h-0 shrink-0">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1">
               {isEditingName && (currentBookmark || existingBookmark) ? (
@@ -407,7 +407,7 @@ export function SpotDetailModal({
             )}
           </div>
         </CardHeader>
-        <CardContent className="space-y-3 overflow-y-auto flex-1 min-h-0">
+        <CardContent className="space-y-3 overflow-y-auto flex-1 min-h-0 pb-4">
           {/* 명소 설명 (명소인 경우에만 표시) */}
           {spot && displayData.description && (
             <p className="text-sm text-muted-foreground">{displayData.description}</p>
@@ -429,7 +429,7 @@ export function SpotDetailModal({
                 return memo ? (
                   <div 
                     className={cn(
-                      "rounded-lg border border-border/50 bg-muted/30 p-3",
+                      "rounded-lg border border-border/50 bg-muted/30 p-3 max-h-[120px] overflow-y-auto",
                       shouldTruncate && "cursor-pointer hover:bg-muted/50 transition-colors"
                     )}
                     onClick={() => {
