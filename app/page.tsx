@@ -5,7 +5,9 @@ import { Header } from "@/components/header"
 import { InputSection } from "@/components/input-section"
 import { ResultSection } from "@/components/result-section"
 import { ForecastView } from "@/components/forecast-view"
+import { TodayRecommendView } from "@/components/today-recommend-view"
 import { StarField } from "@/components/star-field"
+import { authStore } from "@/lib/store/authStore"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -28,6 +30,7 @@ const MapSelector = dynamic(() => import("@/components/map/map-selector"), {
 export default function Home() {
   const [activeTab, setActiveTab] = useState("forecast")
   const { toast } = useToast()
+  const isAuthenticated = authStore((state) => state.isAuthenticated)
   
   // 현재 관측 관련 상태
   const [hasResult, setHasResult] = useState(false)
@@ -266,6 +269,13 @@ export default function Home() {
     }
   }, [activeTab, fetchForecast])
 
+  // 로그아웃 시 추천 탭이 선택되어 있으면 주간 예보로 전환
+  useEffect(() => {
+    if (!isAuthenticated && activeTab === "recommend") {
+      setActiveTab("forecast")
+    }
+  }, [isAuthenticated, activeTab])
+
   return (
     <div className="relative min-h-screen">
       <StarField />
@@ -311,9 +321,12 @@ export default function Home() {
             </Card>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsList className={`grid w-full max-w-md ${isAuthenticated ? "grid-cols-3" : "grid-cols-2"}`}>
                 <TabsTrigger value="forecast">주간 예보</TabsTrigger>
                 <TabsTrigger value="current">오늘 분석</TabsTrigger>
+                {isAuthenticated && (
+                  <TabsTrigger value="recommend">오늘의 추천</TabsTrigger>
+                )}
               </TabsList>
               
               <TabsContent value="forecast" className="mt-6 space-y-4">
@@ -352,6 +365,12 @@ export default function Home() {
                   </Card>
                 )}
               </TabsContent>
+
+              {isAuthenticated && (
+                <TabsContent value="recommend" className="mt-6">
+                  <TodayRecommendView />
+                </TabsContent>
+              )}
             </Tabs>
           </div>
         </main>
