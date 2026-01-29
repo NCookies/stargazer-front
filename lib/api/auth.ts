@@ -119,20 +119,22 @@ export const authApi = {
 
       return accessToken;
     } catch (error) {
+      const axiosError = error as AxiosError;
+      const status = axiosError.response?.status;
+
+      // 401은 로그인 안 된 상태에서 reissue 시도 시 정상 응답 → 에러 로그 생략
+      if (status === 401) {
+        authStore.getState().logout();
+        throw error;
+      }
+
       if (error instanceof Error) {
         console.error('[reissue] 에러:', error.message);
-      } else if ((error as AxiosError).response) {
-        const axiosError = error as AxiosError;
-        const status = axiosError.response?.status;
+      } else if (axiosError.response) {
         console.error('[reissue] API 에러:', {
           status,
           data: axiosError.response?.data,
         });
-        
-        // 401 에러인 경우에만 로그아웃 처리 (Refresh Token이 만료되었거나 없음)
-        if (status === 401) {
-          authStore.getState().logout();
-        }
       }
       throw error;
     }

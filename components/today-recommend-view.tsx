@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -9,32 +8,17 @@ import { Spinner } from "@/components/ui/spinner"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { MapPin, Cloud, Moon, Clock, Star, AlertCircle, Info } from "lucide-react"
 import Link from "next/link"
-import { recommendsApi } from "@/lib/api"
 import type { RecommendedBookmarkResponse, RecommendedBookmarkItemResponse } from "@/types/api"
-import { AxiosError } from "axios"
 import { MOON_PHASE_MAP } from "@/lib/utils"
 
-export function TodayRecommendView() {
-  const [data, setData] = useState<RecommendedBookmarkResponse | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+export interface TodayRecommendViewProps {
+  data: RecommendedBookmarkResponse | null
+  isLoading: boolean
+  error: string | null
+  onFetch: () => void
+}
 
-  const handleFetch = async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const response = await recommendsApi.getTodayRecommendedBookmarks()
-      setData(response)
-    } catch (err) {
-      if (err instanceof AxiosError && err.response?.status === 401) {
-        setError("로그인이 필요합니다.")
-      } else {
-        setError("잠시 후 다시 시도해 주세요.")
-      }
-    } finally {
-      setIsLoading(false)
-    }
-  }
+export function TodayRecommendView({ data, isLoading, error, onFetch }: TodayRecommendViewProps) {
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "bg-purple-500/20 text-purple-200 border-purple-500/50"
@@ -72,7 +56,7 @@ export function TodayRecommendView() {
         </CardHeader>
         <CardContent>
           <Button
-            onClick={handleFetch}
+            onClick={onFetch}
             disabled={isLoading}
             className="gap-2 shadow-md hover:shadow-lg transition-shadow"
           >
@@ -155,10 +139,10 @@ export function TodayRecommendView() {
                 return (
                   <Card
                     key={item.bookmarkId}
-                    className="border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden transition-all hover:scale-[1.02] hover:shadow-lg hover:border-primary/30"
+                    className="border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden transition-all hover:scale-[1.02] hover:shadow-lg hover:border-primary/30 p-0 gap-0"
                   >
-                    {/* 점수 강조 헤더 */}
-                    <div className={`rounded-t-lg border-b border-current/20 px-4 py-3 ${scoreColor} shadow-sm`}>
+                    {/* 점수 강조 헤더 - 카드 상단과 맞춤 */}
+                    <div className={`rounded-t-xl border-b border-current/20 px-6 py-3 ${scoreColor} shadow-sm`}>
                       <div className="flex items-center justify-between gap-2">
                         <CardTitle className="text-base font-semibold truncate text-foreground">
                           {item.name}
@@ -200,7 +184,7 @@ export function TodayRecommendView() {
                         </CardDescription>
                       )}
                     </div>
-                    <CardContent className="pt-4 space-y-3">
+                    <CardContent className="pt-4 pb-5 space-y-3">
                       <div className="flex justify-between items-center text-sm">
                         <span className="flex items-center gap-1.5 text-muted-foreground">
                           <Clock className="w-4 h-4 text-primary/80" />
