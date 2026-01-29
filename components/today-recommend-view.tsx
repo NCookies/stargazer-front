@@ -16,9 +16,11 @@ export interface TodayRecommendViewProps {
   isLoading: boolean
   error: string | null
   onFetch: () => void
+  /** 카드 클릭 시 지도에서 해당 위치로 이동·마커 표시 */
+  onFocusOnMap?: (lat: number, lon: number) => void
 }
 
-export function TodayRecommendView({ data, isLoading, error, onFetch }: TodayRecommendViewProps) {
+export function TodayRecommendView({ data, isLoading, error, onFetch, onFocusOnMap }: TodayRecommendViewProps) {
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "bg-purple-500/20 text-purple-200 border-purple-500/50"
@@ -139,7 +141,24 @@ export function TodayRecommendView({ data, isLoading, error, onFetch }: TodayRec
                 return (
                   <Card
                     key={item.bookmarkId}
-                    className="border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden transition-all hover:scale-[1.02] hover:shadow-lg hover:border-primary/30 p-0 gap-0"
+                    role={onFocusOnMap ? "button" : undefined}
+                    tabIndex={onFocusOnMap ? 0 : undefined}
+                    onClick={
+                      onFocusOnMap
+                        ? () => onFocusOnMap(item.latitude, item.longitude)
+                        : undefined
+                    }
+                    onKeyDown={
+                      onFocusOnMap
+                        ? (e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault()
+                              onFocusOnMap(item.latitude, item.longitude)
+                            }
+                          }
+                        : undefined
+                    }
+                    className={`border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden transition-all hover:scale-[1.02] hover:shadow-lg hover:border-primary/30 p-0 gap-0 ${onFocusOnMap ? "cursor-pointer" : ""}`}
                   >
                     {/* 점수 강조 헤더 - 카드 상단과 맞춤 */}
                     <div className={`rounded-t-xl border-b border-current/20 px-6 py-3 ${scoreColor} shadow-sm`}>

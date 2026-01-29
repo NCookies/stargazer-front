@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Header } from "@/components/header"
 import { InputSection } from "@/components/input-section"
 import { ResultSection } from "@/components/result-section"
@@ -53,6 +53,7 @@ export default function Home() {
   const [lat, setLat] = useState(37.5665); // 서울 기본값
   const [lon, setLon] = useState(126.9780);
   const [isLocationInitialized, setIsLocationInitialized] = useState(false);
+  const mapCardRef = useRef<HTMLDivElement>(null);
 
   // 선택된 시간 상태 (탭 전환 시에도 유지)
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
@@ -324,18 +325,20 @@ export default function Home() {
             </Card>
 
             {/* 공동 지도 선택 */}
-            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="text-2xl flex items-center gap-2">
-                  <MapPin className="w-6 h-6 text-primary" />
-                  위치 선택
-                </CardTitle>
-                <CardDescription>지도에서 위치를 선택하세요</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <MapSelector lat={lat} lon={lon} setLat={setLat} setLon={setLon} />
-              </CardContent>
-            </Card>
+            <div ref={mapCardRef}>
+              <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="text-2xl flex items-center gap-2">
+                    <MapPin className="w-6 h-6 text-primary" />
+                    위치 선택
+                  </CardTitle>
+                  <CardDescription>지도에서 위치를 선택하세요</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <MapSelector lat={lat} lon={lon} setLat={setLat} setLon={setLon} />
+                </CardContent>
+              </Card>
+            </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full max-w-md grid-cols-3">
@@ -388,6 +391,11 @@ export default function Home() {
                     isLoading={isRecommendLoading}
                     error={recommendError}
                     onFetch={handleFetchRecommend}
+                    onFocusOnMap={(lat: number, lon: number) => {
+                      setLat(lat)
+                      setLon(lon)
+                      mapCardRef.current?.scrollIntoView({ behavior: "smooth" })
+                    }}
                   />
                 ) : (
                   <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
