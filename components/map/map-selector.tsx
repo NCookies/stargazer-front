@@ -80,7 +80,7 @@ export default function MapSelector({
   const [isSearchingSpots, setIsSearchingSpots] = useState(false)
 
   // 지도 크기 토글 상태
-  const [isMapExpanded, setIsMapExpanded] = useState(false)
+  const [isMapExpanded, setIsMapExpanded] = useState(true)
 
   // 북마크 관련 상태
   const { bookmarks, setBookmarks, addBookmark, removeBookmark, isSpotBookmarked, getBookmarkBySpotId } = bookmarkStore()
